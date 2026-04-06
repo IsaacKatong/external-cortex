@@ -1,0 +1,17 @@
+{
+  "name": "external-cortex",
+  "version": "1.0.0",
+  "description": "External Cortex functions as an extension of your brain. It ingests your stimulus and presents it in a way meant for you to understand.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "vitest": "^1.6.1"
+  }
+}

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { parseExternalGraph } from "../parseExternalGraph.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const fixturesDir = resolve(__dirname, "../../../_fixtures_/external-source");
+const fixturesDir = resolve(__dirname, "../__fixtures__");
 
 function loadFixture(name: string): string {
   return readFileSync(resolve(fixturesDir, name), "utf-8");

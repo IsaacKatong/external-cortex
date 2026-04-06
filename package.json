@@ -11,7 +11,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/sql.js": "^1.4.11",
     "typescript": "^6.0.2",
     "vitest": "^1.6.1"
+  },
+  "dependencies": {
+    "sql.js": "^1.14.1"
   }
 }

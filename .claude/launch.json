@@ -6,6 +6,12 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && nvm use && npx vitest --watch"],
       "port": 51204
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && nvm use 18 && npx vite"],
+      "port": 5173
     }
   ]
 }

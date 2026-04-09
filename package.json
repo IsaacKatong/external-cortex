@@ -5,17 +5,26 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "dev": "vite",
     "test": "vitest run"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/sql.js": "^1.4.11",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^24.1.0",
     "typescript": "^6.0.2",
     "vitest": "^1.6.1"
   },
   "dependencies": {
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "sql.js": "^1.14.1"
   }
 }

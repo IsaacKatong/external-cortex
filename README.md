@@ -21,6 +21,33 @@ npm run dev
 
 The dev server serves files from `local-storage/` as static assets, so `local-storage/graph.json` becomes available at `/graph.json`. The app fetches this file on load, parses it, and renders the UI.
 
+## Production Build
+
+Build the app into static files ready for S3 or any static hosting:
+
+```bash
+npm run build
+```
+
+This outputs a `dist/` folder containing:
+
+- `index.html` — the entry page
+- `assets/` — the bundled JavaScript
+- `graph.json` — copied from `local-storage/graph.json`
+
+To preview the production build locally before deploying:
+
+```bash
+npm run preview
+```
+
+### Deploying to S3
+
+1. Run `npm run build`.
+2. Upload the contents of `dist/` to your S3 bucket.
+3. To use a different graph, replace `graph.json` in the bucket with your own (see `src/external-storage/SCHEMA.md` for the format).
+4. Point your domain at the bucket and ensure `index.html` is set as the index document.
+
 ## Running Tests
 
 ```bash

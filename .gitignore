@@ -1,4 +1,5 @@
 node_modules/
+dist/
 TODO.md
 local-storage/*
 !local-storage/README.md

@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy:github-pages": "npx tsx src/deployment/github-pages/deploy.ts"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,7 @@
     "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^24.1.0",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^1.6.1"
   },

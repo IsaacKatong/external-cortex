@@ -4,7 +4,7 @@ import { parseExternalGraph } from "./external-storage/parseExternalGraph.js";
 import { ExternalGraphView } from "./ui/ExternalGraphView.js";
 
 async function start(): Promise<void> {
-  const response = await fetch("/graph.json");
+  const response = await fetch(`${import.meta.env.BASE_URL}graph.json`);
 
   if (!response.ok) {
     throw new Error(

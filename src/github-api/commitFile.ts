@@ -36,6 +36,7 @@ export async function getFileSha(
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github+json",
       },
+      cache: "no-store",
     }
   );
 
@@ -91,6 +92,7 @@ export async function commitGraphJson(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
+      cache: "no-store",
     }
   );
 
@@ -124,6 +126,7 @@ export async function downloadGraphJson(
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github.raw+json",
         },
+        cache: "no-store",
       }
     );
 

@@ -12,6 +12,8 @@ export interface ExternalCortexConfig {
   hostingType: string;
   /** Active UI rendering style. Valid values: `"BASIC_JSON"`. */
   uiStyle: string;
+  /** GitHub repository name used for hosting (e.g. `"my-cortex-site"`). */
+  githubRepoName: string;
   /** Application color palette. */
   colors: ExternalCortexColors;
 }
@@ -43,6 +45,7 @@ export const CONFIG_DEFAULTS: ExternalCortexConfig = {
   localStorageDirectory: "local-storage",
   hostingType: "GITHUB_PAGES",
   uiStyle: "BASIC_JSON",
+  githubRepoName: "",
   colors: {
     textPrimary: "#e0e0e0",
     textSecondary: "#a0a0a0",

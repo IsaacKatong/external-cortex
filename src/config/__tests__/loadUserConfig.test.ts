@@ -70,6 +70,7 @@ describe("loadUserConfig", () => {
       localStorageDirectory: "custom-storage",
       hostingType: "S3",
       uiStyle: "BASIC_JSON",
+      githubRepoName: "my-site",
       colors: {
         textPrimary: "#111111",
         textSecondary: "#222222",

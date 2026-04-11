@@ -55,6 +55,7 @@ export function loadUserConfig(
     ),
     hostingType: asString(raw["hostingType"], CONFIG_DEFAULTS.hostingType),
     uiStyle: asString(raw["uiStyle"], CONFIG_DEFAULTS.uiStyle),
+    githubRepoName: asString(raw["githubRepoName"], CONFIG_DEFAULTS.githubRepoName),
     colors,
   };
 }

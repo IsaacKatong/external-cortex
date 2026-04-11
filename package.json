@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "deploy:github-pages": "npx tsx src/deployment/github-pages/deploy.ts"
+    "deploy:github-pages": "npx tsx src/deployment/github-pages/deploy.ts",
+    "config:edit": "npx tsx src/config/editConfig.ts"
   },
   "keywords": [],
   "author": "",

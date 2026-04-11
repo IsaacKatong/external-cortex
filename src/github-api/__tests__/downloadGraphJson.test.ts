@@ -22,6 +22,7 @@ describe("downloadGraphJson", () => {
           Authorization: "Bearer token123",
           Accept: "application/vnd.github.raw+json",
         },
+        cache: "no-store",
       }
     );
   });

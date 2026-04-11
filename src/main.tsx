@@ -4,6 +4,11 @@ import { parseExternalGraph } from "./external-storage/parseExternalGraph.js";
 import { initializeDatabase } from "./repository/initializeDatabase.js";
 import { createGraphRepository } from "./repository/GraphRepository.js";
 import { ExternalGraphView } from "./ui/ExternalGraphView.js";
+import { PasswordPrompt } from "./ui/PasswordPrompt.js";
+import { ENCRYPTED } from "./config/encryption.js";
+import { decryptGraphJson } from "./encryption/decrypt.js";
+
+const root = createRoot(document.getElementById("root")!);
 
 async function start(): Promise<void> {
   const response = await fetch(`${import.meta.env.BASE_URL}graph.json`);
@@ -14,7 +19,36 @@ async function start(): Promise<void> {
     );
   }
 
-  const json = await response.text();
+  const rawText = await response.text();
+
+  if (ENCRYPTED) {
+    renderPasswordPrompt(rawText);
+  } else {
+    await loadAndRender(rawText);
+  }
+}
+
+function renderPasswordPrompt(ciphertext: string, error: string | null = null): void {
+  root.render(
+    <StrictMode>
+      <PasswordPrompt
+        error={error}
+        onSubmit={(password) => attemptDecrypt(ciphertext, password)}
+      />
+    </StrictMode>
+  );
+}
+
+async function attemptDecrypt(ciphertext: string, password: string): Promise<void> {
+  try {
+    const json = await decryptGraphJson(ciphertext, password);
+    await loadAndRender(json);
+  } catch {
+    renderPasswordPrompt(ciphertext, "Invalid password. Please try again.");
+  }
+}
+
+async function loadAndRender(json: string): Promise<void> {
   const graph = parseExternalGraph(json);
 
   const loadData = await initializeDatabase({
@@ -23,7 +57,7 @@ async function start(): Promise<void> {
   const { db } = loadData(graph);
   const repository = createGraphRepository(db);
 
-  createRoot(document.getElementById("root")!).render(
+  root.render(
     <StrictMode>
       <ExternalGraphView graph={graph} repository={repository} />
     </StrictMode>

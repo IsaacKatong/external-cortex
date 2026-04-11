@@ -13,6 +13,7 @@ describe("CONFIG_DEFAULTS", () => {
     expect(CONFIG_DEFAULTS).toHaveProperty("localStorageDirectory");
     expect(CONFIG_DEFAULTS).toHaveProperty("hostingType");
     expect(CONFIG_DEFAULTS).toHaveProperty("uiStyle");
+    expect(CONFIG_DEFAULTS).toHaveProperty("password");
     expect(CONFIG_DEFAULTS).toHaveProperty("colors");
   });
 
@@ -29,6 +30,7 @@ describe("CONFIG_DEFAULTS", () => {
     expect(typeof CONFIG_DEFAULTS.localStorageDirectory).toBe("string");
     expect(typeof CONFIG_DEFAULTS.hostingType).toBe("string");
     expect(typeof CONFIG_DEFAULTS.uiStyle).toBe("string");
+    expect(typeof CONFIG_DEFAULTS.password).toBe("string");
 
     for (const value of Object.values(CONFIG_DEFAULTS.colors)) {
       expect(typeof value).toBe("string");

@@ -1,10 +1,34 @@
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { promptRepoName } from "./promptRepoName.js";
 import { createGitHubRepo } from "./createGitHubRepo.js";
 import { buildForGitHubPages } from "./buildForGitHubPages.js";
 import { uploadToGitHubPages } from "./uploadToGitHubPages.js";
 import { updateGitHubPages } from "./updateGitHubPages.js";
-import { loadAllConfigs, getConfigNames, loadUserConfig } from "../../config/loadUserConfig.js";
+import { loadAllConfigs, loadUserConfig } from "../../config/loadUserConfig.js";
 import { promptConfigName } from "../../config/promptConfigName.js";
+import { encryptGraphJson } from "../../encryption/encrypt.js";
+
+/**
+ * If the config has a password, encrypt graph.json in the given directory.
+ *
+ * Reads the existing `graph.json`, encrypts it, and overwrites the file
+ * with the base64-encoded ciphertext.
+ */
+function encryptGraphIfNeeded(
+  directory: string,
+  password: string
+): void {
+  if (!password) return;
+
+  const graphPath = resolve(directory, "graph.json");
+  if (!existsSync(graphPath)) return;
+
+  const plaintext = readFileSync(graphPath, "utf-8");
+  const encrypted = encryptGraphJson(plaintext, password);
+  writeFileSync(graphPath, encrypted, "utf-8");
+  console.log("Encrypted graph.json with configured password.");
+}
 
 /**
  * Deploy External Cortex to GitHub Pages.
@@ -12,12 +36,12 @@ import { promptConfigName } from "../../config/promptConfigName.js";
  * Prompts the user to select a named configuration (no default option),
  * then deploys using that config. If `githubRepoName` is set, updates
  * the existing Pages repo. Otherwise, runs the full interactive flow.
+ * If a password is configured, graph.json is encrypted before upload.
  */
 async function deploy(): Promise<void> {
   console.log("\n=== External Cortex – GitHub Pages Deployment ===\n");
 
   const allConfigs = loadAllConfigs();
-  const namedConfigs = getConfigNames(allConfigs);
   const allNames = Object.keys(allConfigs);
 
   if (allNames.length === 0) {
@@ -39,6 +63,8 @@ async function deploy(): Promise<void> {
     buildForGitHubPages(repoShortName, selectedName);
     console.log("Build complete.");
 
+    encryptGraphIfNeeded(resolve("dist"), config.password);
+
     console.log("\nUpdating GitHub Pages repository...");
     updateGitHubPages(fullRepoName);
     console.log(`\nDeployment complete!`);
@@ -53,6 +79,8 @@ async function deploy(): Promise<void> {
     console.log(`\nBuilding for GitHub Pages (base: /${repoName}/)...`);
     buildForGitHubPages(repoName, selectedName);
     console.log("Build complete.");
+
+    encryptGraphIfNeeded(resolve("dist"), config.password);
 
     console.log("\nUploading to GitHub Pages...");
     const { pagesUrl } = uploadToGitHubPages(fullName);

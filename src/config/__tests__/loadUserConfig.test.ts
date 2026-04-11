@@ -71,6 +71,7 @@ describe("loadUserConfig", () => {
       hostingType: "S3",
       uiStyle: "BASIC_JSON",
       githubRepoName: "my-site",
+      password: "secret123",
       colors: {
         textPrimary: "#111111",
         textSecondary: "#222222",

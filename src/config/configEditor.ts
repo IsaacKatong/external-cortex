@@ -11,10 +11,7 @@ import type { QuestionFn } from "./promptConfigName.js";
 type RlFactory = () => { question: QuestionFn; close: () => void };
 
 /**
- * Flattened field descriptors for the config editor.
- *
- * Each entry maps a display label to a getter/setter pair that reads from
- * and writes to an `ExternalCortexConfig` object.
+ * A flattened field descriptor with a dot-separated path, a getter, and a setter.
  */
 interface FieldDescriptor {
   label: string;
@@ -22,58 +19,71 @@ interface FieldDescriptor {
   set: (cfg: ExternalCortexConfig, value: string) => void;
 }
 
-const FIELDS: FieldDescriptor[] = [
-  {
-    label: "storageType",
-    get: (c) => c.storageType,
-    set: (c, v) => { c.storageType = v; },
-  },
-  {
-    label: "localStorageDirectory",
-    get: (c) => c.localStorageDirectory,
-    set: (c, v) => { c.localStorageDirectory = v; },
-  },
-  {
-    label: "hostingType",
-    get: (c) => c.hostingType,
-    set: (c, v) => { c.hostingType = v; },
-  },
-  {
-    label: "uiStyle",
-    get: (c) => c.uiStyle,
-    set: (c, v) => { c.uiStyle = v; },
-  },
-  {
-    label: "githubRepoName",
-    get: (c) => c.githubRepoName,
-    set: (c, v) => { c.githubRepoName = v; },
-  },
-  {
-    label: "colors.textPrimary",
-    get: (c) => c.colors.textPrimary,
-    set: (c, v) => { c.colors.textPrimary = v; },
-  },
-  {
-    label: "colors.textSecondary",
-    get: (c) => c.colors.textSecondary,
-    set: (c, v) => { c.colors.textSecondary = v; },
-  },
-  {
-    label: "colors.background",
-    get: (c) => c.colors.background,
-    set: (c, v) => { c.colors.background = v; },
-  },
-  {
-    label: "colors.border",
-    get: (c) => c.colors.border,
-    set: (c, v) => { c.colors.border = v; },
-  },
-  {
-    label: "colors.accent",
-    get: (c) => c.colors.accent,
-    set: (c, v) => { c.colors.accent = v; },
-  },
-];
+/**
+ * Derive field descriptors by walking `CONFIG_DEFAULTS`.
+ *
+ * Any new field added to {@link ExternalCortexConfig} and
+ * {@link CONFIG_DEFAULTS} automatically appears in the editor.
+ * Nested objects (like `colors`) are flattened with dot notation.
+ */
+function buildFieldDescriptors(): FieldDescriptor[] {
+  const fields: FieldDescriptor[] = [];
+
+  function walk(obj: Record<string, unknown>, prefix: string): void {
+    for (const key of Object.keys(obj)) {
+      const value = obj[key];
+      const path = prefix ? `${prefix}.${key}` : key;
+
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        walk(value as Record<string, unknown>, path);
+      } else {
+        fields.push({
+          label: path,
+          get: (cfg) => getNestedValue(cfg, path),
+          set: (cfg, v) => setNestedValue(cfg, path, v),
+        });
+      }
+    }
+  }
+
+  walk(CONFIG_DEFAULTS as unknown as Record<string, unknown>, "");
+  return fields;
+}
+
+/**
+ * Read a dot-separated path from a config object.
+ */
+function getNestedValue(obj: Record<string, unknown>, path: string): string {
+  const parts = path.split(".");
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (typeof current !== "object" || current === null) return "";
+    current = (current as Record<string, unknown>)[part];
+  }
+  return typeof current === "string" ? current : String(current ?? "");
+}
+
+/**
+ * Write a value at a dot-separated path on a config object.
+ */
+function setNestedValue(obj: Record<string, unknown>, path: string, value: string): void {
+  const parts = path.split(".");
+  let current: Record<string, unknown> = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i]!;
+    if (typeof current[part] !== "object" || current[part] === null) {
+      current[part] = {};
+    }
+    current = current[part] as Record<string, unknown>;
+  }
+  current[parts[parts.length - 1]!] = value;
+}
+
+/**
+ * The complete list of editable fields, derived from {@link CONFIG_DEFAULTS}.
+ * Exported for testing — ensures new config fields automatically appear.
+ */
+export const FIELDS: FieldDescriptor[] = buildFieldDescriptors();
 
 /**
  * Ask a single question and return the trimmed answer.

@@ -1,6 +1,12 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { resolve, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -8,6 +14,7 @@ import { loadAllConfigs, getConfigNames, loadUserConfig } from "./src/config/loa
 import { promptConfigName } from "./src/config/promptConfigName.js";
 import { DEFAULT_CONFIG_NAME } from "./src/config/userConfig.js";
 import type { ExternalCortexConfig } from "./src/config/userConfig.js";
+import { encryptGraphJson } from "./src/encryption/encrypt.js";
 
 /**
  * Copies the sql.js WASM binary from node_modules into the public directory
@@ -65,11 +72,12 @@ async function resolveConfig() {
 
 /**
  * If the selected config has a `githubRepoName`, clone or pull the
- * GitHub Pages repo into `pages/` and copy its `graph.json` into the
- * local-storage directory so the dev server serves the live data.
+ * GitHub Pages repo into `pages/`.
+ *
+ * Returns the path to the repo directory, or null if no repo is configured.
  */
-function syncPagesRepo(cfg: ExternalCortexConfig): void {
-  if (!cfg.githubRepoName) return;
+function syncPagesRepo(cfg: ExternalCortexConfig): string | null {
+  if (!cfg.githubRepoName) return null;
 
   const fullRepoName = cfg.githubRepoName;
   const repoShortName = fullRepoName.split("/")[1]!;
@@ -100,26 +108,76 @@ function syncPagesRepo(cfg: ExternalCortexConfig): void {
       });
     }
 
-    // Copy graph.json into local-storage so the dev server serves it
-    const srcGraph = resolve(repoDir, "graph.json");
-    const destGraph = resolve("local-storage", "graph.json");
-    if (existsSync(srcGraph)) {
-      copyFileSync(srcGraph, destGraph);
-      console.log("Copied graph.json from pages repo to local-storage/\n");
-    }
+    return repoDir;
   } catch (err) {
     console.warn(
       `\nWarning: Could not sync pages repo: ${err instanceof Error ? err.message : err}\n`
     );
+    return null;
+  }
+}
+
+/**
+ * Build graph.json from the pages repo's plain-text-graph.json.
+ *
+ * If a password is configured, encrypts the plaintext and writes the
+ * result to graph.json. If no password, copies plain-text-graph.json
+ * as-is to graph.json.
+ *
+ * Falls back to the existing graph.json if plain-text-graph.json doesn't exist.
+ */
+function buildGraphJson(repoDir: string, password: string): void {
+  const plainTextPath = resolve(repoDir, "plain-text-graph.json");
+  const graphPath = resolve(repoDir, "graph.json");
+
+  if (!existsSync(plainTextPath)) {
+    // First time: if graph.json exists but plain-text-graph.json doesn't,
+    // create plain-text-graph.json from graph.json as the source of truth
+    if (existsSync(graphPath)) {
+      const existing = readFileSync(graphPath, "utf-8");
+      // Only seed if graph.json looks like plaintext JSON (not encrypted)
+      if (existing.trimStart().startsWith("{")) {
+        writeFileSync(plainTextPath, existing, "utf-8");
+        console.log("Created plain-text-graph.json from existing graph.json");
+      } else {
+        console.warn("Warning: graph.json appears encrypted but no plain-text-graph.json found.");
+        return;
+      }
+    } else {
+      return;
+    }
+  }
+
+  const plaintext = readFileSync(plainTextPath, "utf-8");
+
+  if (password) {
+    const encrypted = encryptGraphJson(plaintext, password);
+    writeFileSync(graphPath, encrypted, "utf-8");
+    console.log("Encrypted plain-text-graph.json → graph.json");
+  } else {
+    copyFileSync(plainTextPath, graphPath);
+    console.log("Copied plain-text-graph.json → graph.json");
   }
 }
 
 const config = await resolveConfig();
-syncPagesRepo(config);
+const repoDir = syncPagesRepo(config);
+
+if (repoDir) {
+  buildGraphJson(repoDir, config.password);
+}
+
+/**
+ * Determine the publicDir for the dev server.
+ *
+ * If we have a pages repo, serve from there so graph.json is read
+ * directly from the repo. Otherwise fall back to local-storage.
+ */
+const publicDir = repoDir ?? "local-storage";
 
 export default defineConfig({
   plugins: [react(), sqlJsWasmPlugin()],
-  publicDir: "local-storage",
+  publicDir,
   define: {
     __EC_STORAGE_TYPE__: JSON.stringify(config.storageType),
     __EC_LOCAL_STORAGE_DIRECTORY__: JSON.stringify(config.localStorageDirectory),
@@ -131,6 +189,5 @@ export default defineConfig({
     __EC_BORDER__: JSON.stringify(config.colors.border),
     __EC_ACCENT__: JSON.stringify(config.colors.accent),
     __EC_GITHUB_REPO_NAME__: JSON.stringify(config.githubRepoName),
-    __EC_ENCRYPTED__: JSON.stringify(config.password !== ""),
   },
 });

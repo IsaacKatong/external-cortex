@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { promptRepoName } from "./promptRepoName.js";
 import { createGitHubRepo } from "./createGitHubRepo.js";
@@ -10,33 +10,50 @@ import { promptConfigName } from "../../config/promptConfigName.js";
 import { encryptGraphJson } from "../../encryption/encrypt.js";
 
 /**
- * If the config has a password, encrypt graph.json in the given directory.
+ * Build graph.json from plain-text-graph.json in the pages repo.
  *
- * Reads the existing `graph.json`, encrypts it, and overwrites the file
- * with the base64-encoded ciphertext.
+ * If a password is configured, encrypts the plaintext and writes to
+ * graph.json. Otherwise copies plain-text-graph.json as-is to graph.json.
+ * If plain-text-graph.json doesn't exist, falls back to existing graph.json.
  */
-function encryptGraphIfNeeded(
-  directory: string,
-  password: string
-): void {
-  if (!password) return;
+function buildGraphJsonInRepo(repoDir: string, password: string): void {
+  const plainTextPath = resolve(repoDir, "plain-text-graph.json");
+  const graphPath = resolve(repoDir, "graph.json");
 
-  const graphPath = resolve(directory, "graph.json");
-  if (!existsSync(graphPath)) return;
+  if (!existsSync(plainTextPath)) {
+    if (existsSync(graphPath)) {
+      const existing = readFileSync(graphPath, "utf-8");
+      if (existing.trimStart().startsWith("{")) {
+        writeFileSync(plainTextPath, existing, "utf-8");
+        console.log("Created plain-text-graph.json from existing graph.json");
+      } else {
+        console.log("graph.json is already encrypted, using as-is.");
+        return;
+      }
+    } else {
+      console.log("No graph.json found, skipping encryption.");
+      return;
+    }
+  }
 
-  const plaintext = readFileSync(graphPath, "utf-8");
-  const encrypted = encryptGraphJson(plaintext, password);
-  writeFileSync(graphPath, encrypted, "utf-8");
-  console.log("Encrypted graph.json with configured password.");
+  const plaintext = readFileSync(plainTextPath, "utf-8");
+
+  if (password) {
+    const encrypted = encryptGraphJson(plaintext, password);
+    writeFileSync(graphPath, encrypted, "utf-8");
+    console.log("Encrypted plain-text-graph.json → graph.json");
+  } else {
+    copyFileSync(plainTextPath, graphPath);
+    console.log("Copied plain-text-graph.json → graph.json");
+  }
 }
 
 /**
  * Deploy External Cortex to GitHub Pages.
  *
  * Prompts the user to select a named configuration (no default option),
- * then deploys using that config. If `githubRepoName` is set, updates
- * the existing Pages repo. Otherwise, runs the full interactive flow.
- * If a password is configured, graph.json is encrypted before upload.
+ * then deploys using that config. If a password is configured,
+ * plain-text-graph.json is encrypted to graph.json before building.
  */
 async function deploy(): Promise<void> {
   console.log("\n=== External Cortex – GitHub Pages Deployment ===\n");
@@ -63,10 +80,8 @@ async function deploy(): Promise<void> {
     buildForGitHubPages(repoShortName, selectedName);
     console.log("Build complete.");
 
-    encryptGraphIfNeeded(resolve("dist"), config.password);
-
     console.log("\nUpdating GitHub Pages repository...");
-    updateGitHubPages(fullRepoName);
+    updateGitHubPages(fullRepoName, config.password);
     console.log(`\nDeployment complete!`);
   } else {
     const suggestedName = "external-cortex-site";
@@ -79,8 +94,6 @@ async function deploy(): Promise<void> {
     console.log(`\nBuilding for GitHub Pages (base: /${repoName}/)...`);
     buildForGitHubPages(repoName, selectedName);
     console.log("Build complete.");
-
-    encryptGraphIfNeeded(resolve("dist"), config.password);
 
     console.log("\nUploading to GitHub Pages...");
     const { pagesUrl } = uploadToGitHubPages(fullName);

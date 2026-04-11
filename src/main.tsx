@@ -6,10 +6,21 @@ import { createGraphRepository } from "./repository/GraphRepository.js";
 import { ExternalGraphView } from "./ui/ExternalGraphView.js";
 import { GitHubAuthProvider } from "./github-auth/GitHubAuthContext.js";
 import { PasswordPrompt } from "./ui/PasswordPrompt.js";
-import { ENCRYPTED } from "./config/encryption.js";
 import { decryptGraphJson } from "./encryption/decrypt.js";
 
 const root = createRoot(document.getElementById("root")!);
+
+/**
+ * Check if the raw text looks like encrypted content (not valid JSON).
+ */
+function isEncrypted(rawText: string): boolean {
+  try {
+    JSON.parse(rawText);
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 async function start(): Promise<void> {
   const response = await fetch(`${import.meta.env.BASE_URL}graph.json`);
@@ -22,7 +33,7 @@ async function start(): Promise<void> {
 
   const rawText = await response.text();
 
-  if (ENCRYPTED) {
+  if (isEncrypted(rawText)) {
     renderPasswordPrompt(rawText);
   } else {
     await loadAndRender(rawText);

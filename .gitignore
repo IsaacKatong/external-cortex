@@ -3,5 +3,6 @@ dist/
 .claude/
 TODO.md
 pages/
+plain-text-graph.json
 local-storage/*
 !local-storage/README.md

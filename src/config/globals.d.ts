@@ -16,4 +16,3 @@ declare const __EC_BACKGROUND__: string;
 declare const __EC_BORDER__: string;
 declare const __EC_ACCENT__: string;
 declare const __EC_GITHUB_REPO_NAME__: string;
-declare const __EC_ENCRYPTED__: boolean;

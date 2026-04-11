@@ -7,6 +7,10 @@ vi.mock("../runCommand.js", () => ({
   runCommand: vi.fn(),
 }));
 
+vi.mock("../../../encryption/encrypt.js", () => ({
+  encryptGraphJson: vi.fn((plaintext: string, _password: string) => `ENCRYPTED:${plaintext}`),
+}));
+
 import { runCommand } from "../runCommand.js";
 import { updateGitHubPages } from "../updateGitHubPages.js";
 
@@ -63,7 +67,7 @@ describe("updateGitHubPages", () => {
       return "";
     });
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     const ghCall = mockRunCommand.mock.calls.find(
       (c) => c[0] === "gh"
@@ -78,7 +82,7 @@ describe("updateGitHubPages", () => {
     mkdirSync(repoDir, { recursive: true });
     mkdirSync(resolve(repoDir, ".git"), { recursive: true });
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     const pullCall = mockRunCommand.mock.calls.find(
       (c) => c[0] === "git" && (c[1] as string[])[0] === "pull"
@@ -94,7 +98,7 @@ describe("updateGitHubPages", () => {
     mkdirSync(repoDir, { recursive: true });
     mkdirSync(resolve(repoDir, ".git"), { recursive: true });
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     const setUrlCall = mockRunCommand.mock.calls.find(
       (c) =>
@@ -125,7 +129,7 @@ describe("updateGitHubPages", () => {
     mkdirSync(repoDir, { recursive: true });
     mkdirSync(resolve(repoDir, ".git"), { recursive: true });
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     expect(existsSync(resolve(repoDir, "index.html"))).toBe(true);
     expect(readFileSync(resolve(repoDir, "index.html"), "utf-8")).toBe(
@@ -141,7 +145,7 @@ describe("updateGitHubPages", () => {
 
     writeFileSync(resolve(distDir, "graph.json"), '{"new":"data"}');
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     expect(readFileSync(resolve(repoDir, "graph.json"), "utf-8")).toBe(
       '{"existing":"data"}'
@@ -157,7 +161,7 @@ describe("updateGitHubPages", () => {
     mkdirSync(resolve(distDir, ".git"), { recursive: true });
     writeFileSync(resolve(distDir, ".git", "HEAD"), "ref: refs/heads/other");
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     // .git in repo should be preserved, not overwritten from dist
     expect(readFileSync(resolve(repoDir, ".git", "HEAD"), "utf-8")).toBe(
@@ -170,7 +174,7 @@ describe("updateGitHubPages", () => {
     mkdirSync(resolve(repoDir, ".git"), { recursive: true });
     writeFileSync(resolve(repoDir, "old-asset.js"), "stale");
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     expect(existsSync(resolve(repoDir, "old-asset.js"))).toBe(false);
   });
@@ -180,7 +184,7 @@ describe("updateGitHubPages", () => {
     mkdirSync(resolve(repoDir, ".git"), { recursive: true });
     writeFileSync(resolve(repoDir, ".git", "HEAD"), "ref: refs/heads/main");
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     expect(existsSync(resolve(repoDir, ".git", "HEAD"))).toBe(true);
   });
@@ -189,7 +193,7 @@ describe("updateGitHubPages", () => {
     mkdirSync(repoDir, { recursive: true });
     mkdirSync(resolve(repoDir, ".git"), { recursive: true });
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     const calls = mockRunCommand.mock.calls;
     const addCall = calls.find(
@@ -231,7 +235,7 @@ describe("updateGitHubPages", () => {
       return "";
     });
 
-    updateGitHubPages("user/my-repo", projectRoot);
+    updateGitHubPages("user/my-repo", "", projectRoot);
 
     const commitCall = mockRunCommand.mock.calls.find(
       (c) => c[0] === "git" && (c[1] as string[])[0] === "commit"
@@ -242,5 +246,79 @@ describe("updateGitHubPages", () => {
 
     expect(commitCall).toBeUndefined();
     expect(pushCall).toBeUndefined();
+  });
+
+  it("preserves plain-text-graph.json in the repo directory", () => {
+    mkdirSync(repoDir, { recursive: true });
+    mkdirSync(resolve(repoDir, ".git"), { recursive: true });
+    writeFileSync(resolve(repoDir, "plain-text-graph.json"), '{"plain":"data"}');
+
+    writeFileSync(resolve(distDir, "plain-text-graph.json"), '{"new":"data"}');
+
+    updateGitHubPages("user/my-repo", "", projectRoot);
+
+    expect(readFileSync(resolve(repoDir, "plain-text-graph.json"), "utf-8")).toBe(
+      '{"plain":"data"}'
+    );
+  });
+
+  it("encrypts graph.json when password is provided", () => {
+    mkdirSync(repoDir, { recursive: true });
+    mkdirSync(resolve(repoDir, ".git"), { recursive: true });
+    writeFileSync(resolve(repoDir, "plain-text-graph.json"), '{"datums":[]}');
+
+    updateGitHubPages("user/my-repo", "secret", projectRoot);
+
+    expect(readFileSync(resolve(repoDir, "graph.json"), "utf-8")).toBe(
+      'ENCRYPTED:{"datums":[]}'
+    );
+  });
+
+  it("copies plain-text-graph.json to graph.json when no password", () => {
+    mkdirSync(repoDir, { recursive: true });
+    mkdirSync(resolve(repoDir, ".git"), { recursive: true });
+    writeFileSync(resolve(repoDir, "plain-text-graph.json"), '{"datums":[]}');
+
+    updateGitHubPages("user/my-repo", "", projectRoot);
+
+    expect(readFileSync(resolve(repoDir, "graph.json"), "utf-8")).toBe(
+      '{"datums":[]}'
+    );
+  });
+
+  it("seeds plain-text-graph.json from existing graph.json", () => {
+    mkdirSync(repoDir, { recursive: true });
+    mkdirSync(resolve(repoDir, ".git"), { recursive: true });
+    writeFileSync(resolve(repoDir, "graph.json"), '{"existing":"data"}');
+
+    updateGitHubPages("user/my-repo", "", projectRoot);
+
+    expect(existsSync(resolve(repoDir, "plain-text-graph.json"))).toBe(true);
+    expect(readFileSync(resolve(repoDir, "plain-text-graph.json"), "utf-8")).toBe(
+      '{"existing":"data"}'
+    );
+  });
+
+  it("creates .gitignore with plain-text-graph.json entry", () => {
+    // Simulate gh clone creating the repo directory
+    mockRunCommand.mockImplementation((cmd, args) => {
+      if (cmd === "gh" && (args as string[])[0] === "repo") {
+        mkdirSync(repoDir, { recursive: true });
+        mkdirSync(resolve(repoDir, ".git"), { recursive: true });
+      }
+      if (
+        cmd === "git" &&
+        (args as string[])[0] === "status" &&
+        (args as string[])[1] === "--porcelain"
+      ) {
+        return "M .gitignore\n";
+      }
+      return "";
+    });
+
+    updateGitHubPages("user/my-repo", "", projectRoot);
+
+    const gitignore = readFileSync(resolve(repoDir, ".gitignore"), "utf-8");
+    expect(gitignore).toContain("plain-text-graph.json");
   });
 });

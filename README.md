@@ -141,6 +141,12 @@ export const HOSTING_TYPE: HostingType = HostingType.GITHUB_PAGES;
 
 The deploy script automatically detects whether your `gh` CLI is configured for SSH or HTTPS and uses the correct git remote URL.
 
+#### Persisting Graph Changes (GitHub Sign-In)
+
+When your site is hosted on GitHub Pages, you can sign in with a GitHub Personal Access Token to persist graph edits directly from the browser. Changes are auto-saved to `graph.json` in your repository within 1 second.
+
+See [src/github-auth/README.md](src/github-auth/README.md) for setup instructions including how to create a fine-grained token with minimal permissions.
+
 ### Deploying to S3
 
 1. Run `npm run build`.

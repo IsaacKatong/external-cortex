@@ -38,6 +38,11 @@ function syncRepo(fullRepoName: string): string {
       ["config", "--local", "credential.helper", "!gh auth git-credential"],
       { cwd: repoDir }
     );
+    // Stash any local changes so the pull doesn't conflict
+    execFileSync("git", ["stash", "--include-untracked"], {
+      cwd: repoDir,
+      stdio: "inherit",
+    });
     execFileSync("git", ["pull", "origin", "main"], {
       cwd: repoDir,
       stdio: "inherit",
@@ -48,67 +53,62 @@ function syncRepo(fullRepoName: string): string {
 }
 
 /**
- * Ensure plain-text-graph.json exists by decrypting graph.json if needed.
+ * Sync graph.json → plain-text-graph.json, then rebuild graph.json.
  *
- * If graph.json is encrypted and a password is configured, decrypts it
- * and writes plain-text-graph.json. If graph.json is plaintext JSON,
- * copies it as plain-text-graph.json. If plain-text-graph.json already
- * exists, rebuilds graph.json from it (encrypting if password is set).
+ * The pulled graph.json has priority as the source of truth:
+ * 1. If graph.json exists, derive plain-text-graph.json from it
+ *    (decrypting if encrypted, copying if plaintext).
+ * 2. Then rebuild graph.json from plain-text-graph.json
+ *    (encrypting if password is set).
  */
 function syncGraphJson(repoDir: string, password: string): void {
   const plainTextPath = resolve(repoDir, "plain-text-graph.json");
   const graphPath = resolve(repoDir, "graph.json");
 
-  if (existsSync(plainTextPath)) {
-    // plain-text-graph.json is the source of truth — rebuild graph.json
-    const plaintext = readFileSync(plainTextPath, "utf-8");
+  // Step 1: Derive plain-text-graph.json from the pulled graph.json
+  if (existsSync(graphPath)) {
+    const content = readFileSync(graphPath, "utf-8");
 
-    if (password) {
-      const encrypted = encryptGraphJson(plaintext, password);
-      writeFileSync(graphPath, encrypted, "utf-8");
-      console.log("Encrypted plain-text-graph.json → graph.json");
-    } else {
-      writeFileSync(graphPath, plaintext, "utf-8");
-      console.log("Copied plain-text-graph.json → graph.json");
+    try {
+      JSON.parse(content);
+      // It's plaintext JSON — use as plain-text-graph.json
+      writeFileSync(plainTextPath, content, "utf-8");
+      console.log("Copied graph.json → plain-text-graph.json");
+    } catch {
+      // Not valid JSON — likely encrypted
+      if (!password) {
+        console.error(
+          "graph.json appears encrypted but no password is configured.\n" +
+            "Set a password in your config to decrypt."
+        );
+        process.exit(1);
+      }
+
+      try {
+        const decrypted = decryptGraphJson(content, password);
+        writeFileSync(plainTextPath, decrypted, "utf-8");
+        console.log("Decrypted graph.json → plain-text-graph.json");
+      } catch {
+        console.error(
+          "Failed to decrypt graph.json. Check that your password is correct."
+        );
+        process.exit(1);
+      }
     }
-    return;
-  }
-
-  if (!existsSync(graphPath)) {
+  } else if (!existsSync(plainTextPath)) {
     console.log("No graph.json found. Nothing to sync.");
     return;
   }
 
-  const content = readFileSync(graphPath, "utf-8");
+  // Step 2: Rebuild graph.json from plain-text-graph.json
+  const plaintext = readFileSync(plainTextPath, "utf-8");
 
-  // Check if graph.json is plaintext JSON
-  try {
-    JSON.parse(content);
-    // It's plaintext — write as plain-text-graph.json
-    writeFileSync(plainTextPath, content, "utf-8");
-    console.log("Created plain-text-graph.json from plaintext graph.json");
-    return;
-  } catch {
-    // Not valid JSON — likely encrypted
-  }
-
-  if (!password) {
-    console.error(
-      "graph.json appears encrypted but no password is configured.\n" +
-        "Set a password in your config to decrypt."
-    );
-    process.exit(1);
-  }
-
-  try {
-    const decrypted = decryptGraphJson(content, password);
-    writeFileSync(plainTextPath, decrypted, "utf-8");
-    console.log("Decrypted graph.json → plain-text-graph.json");
-  } catch {
-    console.error(
-      "Failed to decrypt graph.json. Check that your password is correct."
-    );
-    process.exit(1);
+  if (password) {
+    const encrypted = encryptGraphJson(plaintext, password);
+    writeFileSync(graphPath, encrypted, "utf-8");
+    console.log("Encrypted plain-text-graph.json → graph.json");
+  } else {
+    writeFileSync(graphPath, plaintext, "utf-8");
   }
 }
 

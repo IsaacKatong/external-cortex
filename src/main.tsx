@@ -4,6 +4,7 @@ import { parseExternalGraph } from "./external-storage/parseExternalGraph.js";
 import { initializeDatabase } from "./repository/initializeDatabase.js";
 import { createGraphRepository } from "./repository/GraphRepository.js";
 import { ExternalGraphView } from "./ui/ExternalGraphView.js";
+import { GitHubAuthProvider } from "./github-auth/GitHubAuthContext.js";
 
 async function start(): Promise<void> {
   const response = await fetch(`${import.meta.env.BASE_URL}graph.json`);
@@ -25,7 +26,9 @@ async function start(): Promise<void> {
 
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
-      <ExternalGraphView graph={graph} repository={repository} />
+      <GitHubAuthProvider>
+        <ExternalGraphView graph={graph} repository={repository} db={db} />
+      </GitHubAuthProvider>
     </StrictMode>
   );
 }

@@ -24,9 +24,11 @@ import {
 export type BasicJsonViewProps = {
   graph: ExternalGraph;
   repository?: GraphRepository;
+  /** Called after every mutation so the sync layer can track dirty state. */
+  onMutation?: () => void;
 };
 
-export function BasicJsonView({ graph, repository }: BasicJsonViewProps): ReactNode {
+export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewProps): ReactNode {
   const [datums, setDatums] = useState<Datum[]>(graph.datums);
   const [edges, setEdges] = useState<Edge[]>(graph.edges);
   const [datumTags, setDatumTags] = useState<DatumTag[]>(graph.datumTags);
@@ -114,24 +116,28 @@ export function BasicJsonView({ graph, repository }: BasicJsonViewProps): ReactN
     const datum = values as unknown as Datum;
     repository?.addDatum(datum);
     setDatums((prev) => [...prev, datum]);
+    onMutation?.();
   }
 
   function addEdge(values: Record<string, string | number>): void {
     const edge = values as unknown as Edge;
     repository?.addEdge(edge);
     setEdges((prev) => [...prev, edge]);
+    onMutation?.();
   }
 
   function addDatumTag(values: Record<string, string | number>): void {
     const tag = values as unknown as DatumTag;
     repository?.addDatumTag(tag);
     setDatumTags((prev) => [...prev, tag]);
+    onMutation?.();
   }
 
   function addDatumDimension(values: Record<string, string | number>): void {
     const dim = values as unknown as DatumDimension;
     repository?.addDatumDimension(dim);
     setDatumDimensions((prev) => [...prev, dim]);
+    onMutation?.();
   }
 
   function addDatumTagAssociation(
@@ -140,12 +146,14 @@ export function BasicJsonView({ graph, repository }: BasicJsonViewProps): ReactN
     const assoc = values as unknown as DatumTagAssociation;
     repository?.addDatumTagAssociation(assoc);
     setDatumTagAssociations((prev) => [...prev, assoc]);
+    onMutation?.();
   }
 
   function addEdgeTag(values: Record<string, string | number>): void {
     const tag = values as unknown as EdgeTag;
     repository?.addEdgeTag(tag);
     setEdgeTags((prev) => [...prev, tag]);
+    onMutation?.();
   }
 
   return (

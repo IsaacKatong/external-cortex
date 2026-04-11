@@ -1,6 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { parseExternalGraph } from "./external-storage/parseExternalGraph.js";
+import { initializeDatabase } from "./repository/initializeDatabase.js";
+import { createGraphRepository } from "./repository/GraphRepository.js";
 import { ExternalGraphView } from "./ui/ExternalGraphView.js";
 
 async function start(): Promise<void> {
@@ -15,9 +17,15 @@ async function start(): Promise<void> {
   const json = await response.text();
   const graph = parseExternalGraph(json);
 
+  const loadData = await initializeDatabase({
+    locateFile: (file: string) => `${import.meta.env.BASE_URL}${file}`,
+  });
+  const { db } = loadData(graph);
+  const repository = createGraphRepository(db);
+
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
-      <ExternalGraphView graph={graph} />
+      <ExternalGraphView graph={graph} repository={repository} />
     </StrictMode>
   );
 }

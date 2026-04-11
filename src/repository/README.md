@@ -1,6 +1,10 @@
 # Repository
 
-This folder contains the SQLite database schema as well as query APIs. The database is powered by [sql.js](https://github.com/sql-js/sql.js), a JavaScript implementation of SQLite.
+This folder contains the SQLite database schema, bulk-load logic, and mutation APIs. The database is powered by [sql.js](https://github.com/sql-js/sql.js), a JavaScript implementation of SQLite.
+
+- `schema.ts` — Table and index DDL statements.
+- `initializeDatabase.ts` — Initializes sql.js, creates the schema, and bulk-loads an `ExternalGraph`.
+- `GraphRepository.ts` — UI-agnostic interface and implementation for inserting individual elements into the database. Any UI layer can depend on the `GraphRepository` type without coupling to SQLite internals.
 
 ## Tables
 

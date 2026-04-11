@@ -2,6 +2,8 @@ import initSqlJs, { type Database } from "sql.js";
 import type { ExternalGraph } from "../external-storage/types.js";
 import { createSchema } from "./schema.js";
 
+export type InitSqlJsConfig = Parameters<typeof initSqlJs>[0];
+
 export type QueryDatabase = {
   // TODO: Add query methods
   db: Database;
@@ -59,8 +61,10 @@ function insertGraph(db: Database, graph: ExternalGraph): void {
   insertEdgeTag.free();
 }
 
-export async function initializeDatabase(): Promise<LoadData> {
-  const SQL = await initSqlJs();
+export async function initializeDatabase(
+  config?: InitSqlJsConfig
+): Promise<LoadData> {
+  const SQL = await initSqlJs(config);
   const db = new SQL.Database();
   createSchema(db);
 

@@ -1,6 +1,22 @@
 # external-cortex
 External Cortex functions as an extension of your brain. It ingests your stimulus and presents it in a way meant for you to understand.
 
+## Node Version
+
+This project requires **Node.js v24.14.1** (specified in `.nvmrc`). If you use [nvm](https://github.com/nvm-sh/nvm), run:
+
+```bash
+nvm use
+```
+
+This reads the `.nvmrc` and switches to the correct version. If you don't have it installed yet:
+
+```bash
+nvm install
+```
+
+After upgrading Node, always re-run `npm install` to rebuild native dependencies.
+
 ## Setup
 
 ```bash

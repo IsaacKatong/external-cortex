@@ -155,6 +155,41 @@ Identifies what groups an edge belongs to.
        └────────┘
 ```
 
+## Configuration
+
+External Cortex stores user configuration at `~/.external-cortex/config.json`. The file is a JSON map where each key is a user-defined name for a configuration and each value is the configuration object for that instance. This allows a single user to host multiple External Cortex sites simultaneously with different settings.
+
+### Config File Format
+
+```json
+{
+  "default": {
+    "storageType": "LOCAL",
+    "localStorageDirectory": "local-storage",
+    "hostingType": "GITHUB_PAGES",
+    "uiStyle": "BASIC_JSON",
+    "githubRepoName": "",
+    "colors": { "textPrimary": "#e0e0e0", "textSecondary": "#a0a0a0", "background": "#1a1a1a", "border": "#444444", "accent": "#6cb4ee" }
+  },
+  "work-cortex": {
+    "storageType": "GITHUB",
+    "githubRepoName": "user/work-cortex-site",
+    "colors": { "accent": "#ff6600" }
+  }
+}
+```
+
+Each named config is merged with defaults — missing fields fall back to `CONFIG_DEFAULTS`. A legacy single-object config file (without named keys) is automatically treated as the `"default"` config for backward compatibility.
+
+### Config Selection
+
+When running commands (`dev`, `build`, `deploy:github-pages`), the user is prompted to select which configuration to use:
+
+- **Dev / Build**: The `"default"` option is always available and selected by pressing Enter. Other named configs are listed as numbered options.
+- **Deploy**: There is no default option — the user must explicitly choose which config to deploy.
+
+If only one config exists, it is used automatically without prompting.
+
 ## Long-Term Vision
 
 - Anyone can download External Cortex, find a cheap hosting service, and start dumping information into it

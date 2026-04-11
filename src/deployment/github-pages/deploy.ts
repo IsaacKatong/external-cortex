@@ -3,20 +3,32 @@ import { createGitHubRepo } from "./createGitHubRepo.js";
 import { buildForGitHubPages } from "./buildForGitHubPages.js";
 import { uploadToGitHubPages } from "./uploadToGitHubPages.js";
 import { updateGitHubPages } from "./updateGitHubPages.js";
-import { loadUserConfig } from "../../config/loadUserConfig.js";
+import { loadAllConfigs, getConfigNames, loadUserConfig } from "../../config/loadUserConfig.js";
+import { promptConfigName } from "../../config/promptConfigName.js";
 
 /**
  * Deploy External Cortex to GitHub Pages.
  *
- * If `githubRepoName` is set in the user config, clones or pulls the
- * existing Pages repo into `pages/`, rebuilds, copies output in
- * (preserving `graph.json`), and pushes. Otherwise, runs the full
- * interactive flow: prompt for a name, create the repo, build, and upload.
+ * Prompts the user to select a named configuration (no default option),
+ * then deploys using that config. If `githubRepoName` is set, updates
+ * the existing Pages repo. Otherwise, runs the full interactive flow.
  */
 async function deploy(): Promise<void> {
   console.log("\n=== External Cortex – GitHub Pages Deployment ===\n");
 
-  const config = loadUserConfig();
+  const allConfigs = loadAllConfigs();
+  const namedConfigs = getConfigNames(allConfigs);
+  const allNames = Object.keys(allConfigs);
+
+  if (allNames.length === 0) {
+    console.error("No configurations found. Add a config to ~/.external-cortex/config.json first.");
+    process.exit(1);
+  }
+
+  const selectedName = await promptConfigName(allNames, false);
+  const config = loadUserConfig(selectedName);
+
+  console.log(`\nUsing config: "${selectedName}"`);
 
   if (config.githubRepoName) {
     const fullRepoName = config.githubRepoName;

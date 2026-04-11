@@ -2,12 +2,14 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { loadAllConfigs, getConfigNames, loadUserConfig } from "./src/config/loadUserConfig.js";
@@ -175,8 +177,32 @@ if (repoDir) {
  */
 const publicDir = repoDir ?? "local-storage";
 
+/**
+ * When the publicDir is a git repo (pages/), Vite's default copy tries to
+ * copy `.git/` objects which have restricted permissions, causing EACCES.
+ * This plugin disables the default public dir copy during build and
+ * replaces it with one that skips `.git`.
+ */
+function safePublicDirCopyPlugin(): Plugin {
+  return {
+    name: "safe-public-dir-copy",
+    apply: "build",
+    config() {
+      return { build: { copyPublicDir: false } };
+    },
+    writeBundle() {
+      const src = resolve(publicDir);
+      const dest = resolve("dist");
+      for (const entry of readdirSync(src)) {
+        if (entry === ".git") continue;
+        cpSync(join(src, entry), join(dest, entry), { recursive: true });
+      }
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), sqlJsWasmPlugin()],
+  plugins: [react(), sqlJsWasmPlugin(), safePublicDirCopyPlugin()],
   publicDir,
   define: {
     __EC_STORAGE_TYPE__: JSON.stringify(config.storageType),

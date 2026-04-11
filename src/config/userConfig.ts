@@ -35,6 +35,17 @@ export interface ExternalCortexColors {
 }
 
 /**
+ * A map of named configurations. Each key is a user-defined name for the
+ * config, and each value is the configuration object for that instance.
+ */
+export type ExternalCortexConfigMap = Record<string, ExternalCortexConfig>;
+
+/**
+ * The reserved name for the default configuration.
+ */
+export const DEFAULT_CONFIG_NAME = "default";
+
+/**
  * Default configuration values.
  *
  * These match the hardcoded values that were previously in each config file.

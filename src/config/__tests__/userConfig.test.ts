@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { CONFIG_DEFAULTS } from "../userConfig.js";
+import { CONFIG_DEFAULTS, DEFAULT_CONFIG_NAME } from "../userConfig.js";
+
+describe("DEFAULT_CONFIG_NAME", () => {
+  it("is the string 'default'", () => {
+    expect(DEFAULT_CONFIG_NAME).toBe("default");
+  });
+});
 
 describe("CONFIG_DEFAULTS", () => {
   it("has all required top-level fields", () => {

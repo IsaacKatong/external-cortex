@@ -3,9 +3,9 @@ import react from "@vitejs/plugin-react";
 import { copyFileSync, existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { createRequire } from "node:module";
-import { loadUserConfig } from "./src/config/loadUserConfig.js";
-
-const config = loadUserConfig();
+import { loadAllConfigs, getConfigNames, loadUserConfig } from "./src/config/loadUserConfig.js";
+import { promptConfigName } from "./src/config/promptConfigName.js";
+import { DEFAULT_CONFIG_NAME } from "./src/config/userConfig.js";
 
 /**
  * Copies the sql.js WASM binary from node_modules into the public directory
@@ -41,6 +41,22 @@ function sqlJsWasmPlugin(): Plugin {
     },
   };
 }
+
+async function resolveConfig() {
+  const allConfigs = loadAllConfigs();
+  const namedConfigs = getConfigNames(allConfigs);
+
+  let selectedName: string;
+  if (namedConfigs.length === 0 && allConfigs[DEFAULT_CONFIG_NAME]) {
+    selectedName = DEFAULT_CONFIG_NAME;
+  } else {
+    selectedName = await promptConfigName(namedConfigs, true);
+  }
+
+  return loadUserConfig(selectedName);
+}
+
+const config = await resolveConfig();
 
 export default defineConfig({
   plugins: [react(), sqlJsWasmPlugin()],

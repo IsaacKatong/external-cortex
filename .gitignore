@@ -2,5 +2,6 @@ node_modules/
 dist/
 .claude/
 TODO.md
+pages/
 local-storage/*
 !local-storage/README.md

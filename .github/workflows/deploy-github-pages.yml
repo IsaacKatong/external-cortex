@@ -1,0 +1,103 @@
+name: Deploy to GitHub Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_name:
+        description: "Target GitHub Pages repository name (e.g. external-cortex-site). Leave empty to deploy to this repo's own GitHub Pages."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine base path
+        id: base
+        run: |
+          if [ -n "${{ github.event.inputs.repo_name }}" ]; then
+            echo "path=/${{ github.event.inputs.repo_name }}/" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=/${{ github.event.repository.name }}/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        run: npx vite build --base "${{ steps.base.outputs.path }}"
+
+      - name: Upload artifact (same-repo deploy)
+        if: github.event.inputs.repo_name == ''
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy-same-repo:
+    if: github.event.inputs.repo_name == ''
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-external-repo:
+    if: github.event.inputs.repo_name != ''
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for external repo
+        run: npx vite build --base "/${{ github.event.inputs.repo_name }}/"
+
+      - name: Push to external repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          git init
+          git checkout -b main
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy External Cortex to GitHub Pages"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository_owner }}/${{ github.event.inputs.repo_name }}.git"
+          git push -u origin main --force

@@ -94,6 +94,18 @@ npm run build -- --base /<repo-name>/
 
 Then push the contents of `dist/` to the repository's `main` branch. The site updates automatically when GitHub Pages detects the new commit.
 
+#### Manual Deployment from GitHub UI
+
+You can also trigger a deployment directly from the GitHub Actions UI without using the CLI:
+
+1. Go to the **Actions** tab in the GitHub repository.
+2. Select the **Deploy to GitHub Pages** workflow.
+3. Click **Run workflow**.
+4. Optionally enter a target repository name. Leave empty to deploy to the current repo's own GitHub Pages.
+5. Click **Run workflow** to start the build and deploy.
+
+The workflow handles building with the correct base path and deploying automatically.
+
 #### Configuration
 
 The hosting type is set in `src/config/hosting.ts`:

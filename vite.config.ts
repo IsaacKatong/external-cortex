@@ -76,5 +76,6 @@ export default defineConfig({
     __EC_BACKGROUND__: JSON.stringify(config.colors.background),
     __EC_BORDER__: JSON.stringify(config.colors.border),
     __EC_ACCENT__: JSON.stringify(config.colors.accent),
+    __EC_GITHUB_REPO_NAME__: JSON.stringify(config.githubRepoName),
   },
 });

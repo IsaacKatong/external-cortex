@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import type { Database } from "sql.js";
 import { exportGraph } from "../repository/exportGraph.js";
 import { commitGraphJson } from "../github-api/commitFile.js";
+import { encryptGraphJson } from "../encryption/browserEncrypt.js";
 
 /**
  * Sync status indicates the current state of graph persistence.
@@ -28,16 +29,21 @@ const DEBOUNCE_MS = 1_000;
  * React hook that manages syncing the in-memory SQLite graph to GitHub.
  *
  * Call `markDirty()` after every mutation. A debounce timer auto-saves
- * after 30 seconds of inactivity. `forceSave()` saves immediately.
+ * after 1 second of inactivity. `forceSave()` saves immediately.
+ *
+ * If a password is provided, the exported JSON is encrypted before
+ * committing to GitHub.
  *
  * @param db - The sql.js Database instance.
  * @param token - GitHub personal access token, or `null` if not signed in.
  * @param repoFullName - Full repository name in `owner/repo` format.
+ * @param password - Password for encrypting graph.json. Empty string means no encryption.
  */
 export function useSyncStatus(
   db: Database | null,
   token: string | null,
-  repoFullName: string
+  repoFullName: string,
+  password: string = ""
 ): SyncStatusHook {
   const [status, setStatus] = useState<SyncStatus>("synced");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -55,7 +61,8 @@ export function useSyncStatus(
     try {
       const graph = exportGraph(db);
       const json = JSON.stringify(graph, null, 2);
-      await commitGraphJson(token, repoFullName, json);
+      const content = password ? await encryptGraphJson(json, password) : json;
+      await commitGraphJson(token, repoFullName, content);
       setStatus("synced");
     } catch (err: unknown) {
       const message =
@@ -65,7 +72,7 @@ export function useSyncStatus(
     } finally {
       savingRef.current = false;
     }
-  }, [db, token, repoFullName]);
+  }, [db, token, repoFullName, password]);
 
   const markDirty = useCallback((): void => {
     if (!token || !repoFullName) return;

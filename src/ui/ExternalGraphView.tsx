@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { Database } from "sql.js";
 import type { ExternalGraph } from "../external-storage/types.js";
 import type { GraphRepository } from "../repository/GraphRepository.js";
@@ -15,19 +15,40 @@ export type ExternalGraphViewProps = {
   graph: ExternalGraph;
   repository?: GraphRepository;
   db?: Database;
+  /** Password used to encrypt graph.json before saving. Empty means no encryption. */
+  password?: string;
+  /** Called once when the user signs in to download a fresh graph.json from GitHub. */
+  onFreshDownload?: (token: string) => Promise<void>;
 };
 
 export function ExternalGraphView({
   graph,
   repository,
   db,
+  password = "",
+  onFreshDownload,
 }: ExternalGraphViewProps): ReactNode {
   const { auth } = useGitHubAuth();
   const { status, errorMessage, markDirty, forceSave } = useSyncStatus(
     db ?? null,
     auth.token,
-    GITHUB_REPO_NAME
+    GITHUB_REPO_NAME,
+    password
   );
+
+  // Download fresh graph.json once when the user signs in
+  const downloadedRef = useRef(false);
+  useEffect(() => {
+    if (
+      auth.status === "signed_in" &&
+      auth.token &&
+      onFreshDownload &&
+      !downloadedRef.current
+    ) {
+      downloadedRef.current = true;
+      onFreshDownload(auth.token);
+    }
+  }, [auth.status, auth.token, onFreshDownload]);
 
   const showGitHub = GITHUB_REPO_NAME.length > 0;
 

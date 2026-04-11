@@ -103,6 +103,38 @@ export async function commitGraphJson(
 }
 
 /**
+ * Download the raw content of `graph.json` from a GitHub repository.
+ *
+ * Uses the Contents API with the raw media type to get the file content
+ * directly, bypassing GitHub Pages caching.
+ *
+ * @param token - GitHub personal access token.
+ * @param repoFullName - Full repository name in `owner/repo` format.
+ * @returns The raw file content as a string, or `null` if unavailable.
+ */
+export async function downloadGraphJson(
+  token: string,
+  repoFullName: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${repoFullName}/contents/graph.json`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.raw+json",
+        },
+      }
+    );
+
+    if (!response.ok) return null;
+    return await response.text();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Encode a string to base64, handling Unicode characters correctly.
  */
 function encodeBase64(str: string): string {

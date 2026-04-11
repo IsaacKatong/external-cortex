@@ -58,7 +58,8 @@ function ensureClone(
     runCommand("gh", ["repo", "clone", fullRepoName, repoDir]);
   } else {
     configureRemote(repoDir, fullRepoName);
-    runCommand("git", ["pull", "origin", "main"], { cwd: repoDir });
+    runCommand("git", ["fetch", "origin", "main"], { cwd: repoDir });
+    runCommand("git", ["reset", "--hard", "origin/main"], { cwd: repoDir });
   }
 
   ensureGitignore(repoDir);

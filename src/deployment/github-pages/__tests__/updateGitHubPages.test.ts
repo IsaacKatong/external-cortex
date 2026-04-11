@@ -78,18 +78,27 @@ describe("updateGitHubPages", () => {
     ]);
   });
 
-  it("pulls when the repo already exists locally", () => {
+  it("force pulls when the repo already exists locally", () => {
     mkdirSync(repoDir, { recursive: true });
     mkdirSync(resolve(repoDir, ".git"), { recursive: true });
 
     updateGitHubPages("user/my-repo", "", projectRoot);
 
-    const pullCall = mockRunCommand.mock.calls.find(
-      (c) => c[0] === "git" && (c[1] as string[])[0] === "pull"
+    const fetchCall = mockRunCommand.mock.calls.find(
+      (c) => c[0] === "git" && (c[1] as string[])[0] === "fetch"
     );
-    expect(pullCall).toEqual([
+    expect(fetchCall).toEqual([
       "git",
-      ["pull", "origin", "main"],
+      ["fetch", "origin", "main"],
+      { cwd: repoDir },
+    ]);
+
+    const resetCall = mockRunCommand.mock.calls.find(
+      (c) => c[0] === "git" && (c[1] as string[])[0] === "reset"
+    );
+    expect(resetCall).toEqual([
+      "git",
+      ["reset", "--hard", "origin/main"],
       { cwd: repoDir },
     ]);
   });

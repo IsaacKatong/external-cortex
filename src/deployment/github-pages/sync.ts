@@ -38,12 +38,11 @@ function syncRepo(fullRepoName: string): string {
       ["config", "--local", "credential.helper", "!gh auth git-credential"],
       { cwd: repoDir }
     );
-    // Stash any local changes so the pull doesn't conflict
-    execFileSync("git", ["stash", "--include-untracked"], {
+    execFileSync("git", ["fetch", "origin", "main"], {
       cwd: repoDir,
       stdio: "inherit",
     });
-    execFileSync("git", ["pull", "origin", "main"], {
+    execFileSync("git", ["reset", "--hard", "origin/main"], {
       cwd: repoDir,
       stdio: "inherit",
     });

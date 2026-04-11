@@ -104,7 +104,11 @@ function syncPagesRepo(cfg: ExternalCortexConfig): string | null {
         ["config", "--local", "credential.helper", "!gh auth git-credential"],
         { cwd: repoDir }
       );
-      execFileSync("git", ["pull", "origin", "main"], {
+      execFileSync("git", ["fetch", "origin", "main"], {
+        cwd: repoDir,
+        stdio: "inherit",
+      });
+      execFileSync("git", ["reset", "--hard", "origin/main"], {
         cwd: repoDir,
         stdio: "inherit",
       });

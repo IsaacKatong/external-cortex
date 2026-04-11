@@ -1,9 +1,16 @@
 # external-cortex
 External Cortex functions as an extension of your brain. It ingests your stimulus and presents it in a way meant for you to understand.
 
-## Node Version
+## Versions
 
-This project requires **Node.js v24.14.1** (specified in `.nvmrc`). If you use [nvm](https://github.com/nvm-sh/nvm), run:
+| Tool | Version |
+|------|---------|
+| Node.js | v24.14.1 |
+| npm | v11.11.0 |
+| Vite | v7.3.2 |
+| Vitest | v4.1.4 |
+
+Node.js is pinned in `.nvmrc`. If you use [nvm](https://github.com/nvm-sh/nvm), run:
 
 ```bash
 nvm use
@@ -16,6 +23,8 @@ nvm install
 ```
 
 After upgrading Node, always re-run `npm install` to rebuild native dependencies.
+
+**Note:** Vite 7's SPA fallback intercepts `.wasm` file requests. The project includes a custom Vite plugin (`sqlJsWasmPlugin` in `vite.config.ts`) that serves `.wasm` files with the correct MIME type and auto-copies the sql.js WASM binary from `node_modules` into `local-storage/`.
 
 ## Setup
 

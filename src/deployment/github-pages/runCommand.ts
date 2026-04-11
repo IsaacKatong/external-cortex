@@ -8,6 +8,8 @@ export interface RunCommandOptions {
   cwd?: string;
   /** How to handle stdio. Defaults to `"inherit"`. */
   stdio?: "inherit" | "pipe";
+  /** Environment variables for the child process. */
+  env?: Record<string, string | undefined>;
 }
 
 /**
@@ -29,6 +31,7 @@ export function runCommand(
     cwd: options.cwd,
     stdio: options.stdio ?? "inherit",
     encoding: "utf-8",
+    env: options.env,
   });
   return typeof result === "string" ? result : "";
 }

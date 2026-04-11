@@ -43,6 +43,11 @@ function sqlJsWasmPlugin(): Plugin {
 }
 
 async function resolveConfig() {
+  const envConfigName = process.env.EC_CONFIG_NAME;
+  if (envConfigName) {
+    return loadUserConfig(envConfigName);
+  }
+
   const allConfigs = loadAllConfigs();
   const namedConfigs = getConfigNames(allConfigs);
 

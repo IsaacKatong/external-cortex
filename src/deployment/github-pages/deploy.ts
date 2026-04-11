@@ -36,7 +36,7 @@ async function deploy(): Promise<void> {
     console.log(`Using configured repository: "${fullRepoName}"`);
 
     console.log(`\nBuilding for GitHub Pages (base: /${repoShortName}/)...`);
-    buildForGitHubPages(repoShortName);
+    buildForGitHubPages(repoShortName, selectedName);
     console.log("Build complete.");
 
     console.log("\nUpdating GitHub Pages repository...");
@@ -51,7 +51,7 @@ async function deploy(): Promise<void> {
     console.log(`Repository created: ${htmlUrl}`);
 
     console.log(`\nBuilding for GitHub Pages (base: /${repoName}/)...`);
-    buildForGitHubPages(repoName);
+    buildForGitHubPages(repoName, selectedName);
     console.log("Build complete.");
 
     console.log("\nUploading to GitHub Pages...");

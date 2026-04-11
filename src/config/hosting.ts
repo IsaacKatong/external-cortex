@@ -11,6 +11,8 @@ export enum HostingType {
 
 /**
  * The active hosting backend used to deploy External Cortex.
- * Change this value to switch between different hosting providers.
+ *
+ * Value is loaded from `~/.external-cortex/config.json` at build time.
+ * Defaults to `GITHUB_PAGES` if no user config is found.
  */
-export const HOSTING_TYPE: HostingType = HostingType.GITHUB_PAGES;
+export const HOSTING_TYPE: HostingType = __EC_HOSTING_TYPE__ as HostingType;

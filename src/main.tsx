@@ -34,7 +34,7 @@ async function tryDownloadFresh(token: string): Promise<string | null> {
 }
 
 async function start(): Promise<void> {
-  const response = await fetch(`${import.meta.env.BASE_URL}graph.json`);
+  const response = await fetch(`${import.meta.env.BASE_URL}graph.json?t=${Date.now()}`);
 
   if (!response.ok) {
     throw new Error(

@@ -55,6 +55,12 @@ export async function promptConfigName(
     return options[0]!;
   }
 
+  if (!process.stdin.isTTY) {
+    const fallback = includeDefault ? "default" : options[0]!;
+    console.log(`Non-interactive environment detected, using config: "${fallback}"`);
+    return fallback;
+  }
+
   const rl = rlFactory();
 
   let prompt = "\nAvailable configurations:\n";

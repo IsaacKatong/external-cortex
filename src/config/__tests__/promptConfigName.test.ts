@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { promptConfigName } from "../promptConfigName.js";
 
 function mockRlFactory(answer: string) {
@@ -8,7 +8,17 @@ function mockRlFactory(answer: string) {
   });
 }
 
+const originalIsTTY = process.stdin.isTTY;
+
 describe("promptConfigName", () => {
+  beforeEach(() => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, writable: true });
+  });
+
   it("returns the only option without prompting when one config exists", async () => {
     const result = await promptConfigName(["my-cortex"], false, mockRlFactory("ignored"));
 
@@ -61,5 +71,21 @@ describe("promptConfigName", () => {
     const result = await promptConfigName(["alpha", "beta"], false, mockRlFactory("alpha"));
 
     expect(result).toBe("alpha");
+  });
+
+  it("uses default in non-interactive environment with includeDefault", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: undefined, writable: true });
+
+    const result = await promptConfigName(["work", "personal"], true, mockRlFactory("ignored"));
+
+    expect(result).toBe("default");
+  });
+
+  it("uses first option in non-interactive environment without includeDefault", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: undefined, writable: true });
+
+    const result = await promptConfigName(["work", "personal"], false, mockRlFactory("ignored"));
+
+    expect(result).toBe("work");
   });
 });

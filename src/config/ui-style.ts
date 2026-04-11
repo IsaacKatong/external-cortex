@@ -12,7 +12,8 @@ export enum UIStyle {
 
 /**
  * The active UI style used to render the external graph.
- * Change this value to switch between different rendering modes.
- * Components should read this config to decide which view to mount.
+ *
+ * Value is loaded from `~/.external-cortex/config.json` at build time.
+ * Defaults to `BASIC_JSON` if no user config is found.
  */
-export const UI_STYLE: UIStyle = UIStyle.BASIC_JSON;
+export const UI_STYLE: UIStyle = __EC_UI_STYLE__ as UIStyle;

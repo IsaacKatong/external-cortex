@@ -41,6 +41,69 @@ To preview the production build locally before deploying:
 npm run preview
 ```
 
+### Deploying to GitHub Pages
+
+Host External Cortex as a free website using GitHub Pages. No manual GitHub configuration required.
+
+#### Prerequisites
+
+1. Install the [GitHub CLI](https://cli.github.com/):
+
+   ```bash
+   brew install gh
+   ```
+
+2. Authenticate with your GitHub account:
+
+   ```bash
+   gh auth login
+   ```
+
+   Select **GitHub.com**, choose your preferred protocol (SSH or HTTPS), and follow the prompts.
+
+#### First-Time Setup
+
+Run the deploy command:
+
+```bash
+npm run deploy:github-pages
+```
+
+This will:
+
+1. Suggest a repository name — press Enter to accept or type a new name.
+2. Create a new public GitHub repository under your account.
+3. Build the site with the correct base path for GitHub Pages.
+4. Push the built files and enable GitHub Pages automatically.
+
+Once complete, the command prints your live site URL (e.g. `https://<user>.github.io/<repo>/`). GitHub Pages may take a few minutes to become available after the first deploy.
+
+#### Updating the Site
+
+After changing your graph data or code, redeploy by running the same command:
+
+```bash
+npm run deploy:github-pages
+```
+
+If the repository already exists, you can also rebuild and push manually:
+
+```bash
+npm run build -- --base /<repo-name>/
+```
+
+Then push the contents of `dist/` to the repository's `main` branch. The site updates automatically when GitHub Pages detects the new commit.
+
+#### Configuration
+
+The hosting type is set in `src/config/hosting.ts`:
+
+```ts
+export const HOSTING_TYPE: HostingType = HostingType.GITHUB_PAGES;
+```
+
+The deploy script automatically detects whether your `gh` CLI is configured for SSH or HTTPS and uses the correct git remote URL.
+
 ### Deploying to S3
 
 1. Run `npm run build`.

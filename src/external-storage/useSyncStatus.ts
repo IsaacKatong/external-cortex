@@ -22,7 +22,7 @@ export type SyncStatusHook = {
   forceSave: () => Promise<void>;
 };
 
-const DEBOUNCE_MS = 30_000;
+const DEBOUNCE_MS = 1_000;
 
 /**
  * React hook that manages syncing the in-memory SQLite graph to GitHub.

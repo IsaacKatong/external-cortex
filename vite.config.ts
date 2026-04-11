@@ -1,11 +1,13 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { copyFileSync, existsSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { loadAllConfigs, getConfigNames, loadUserConfig } from "./src/config/loadUserConfig.js";
 import { promptConfigName } from "./src/config/promptConfigName.js";
 import { DEFAULT_CONFIG_NAME } from "./src/config/userConfig.js";
+import type { ExternalCortexConfig } from "./src/config/userConfig.js";
 
 /**
  * Copies the sql.js WASM binary from node_modules into the public directory
@@ -43,6 +45,11 @@ function sqlJsWasmPlugin(): Plugin {
 }
 
 async function resolveConfig() {
+  const envConfigName = process.env.EC_CONFIG_NAME;
+  if (envConfigName) {
+    return loadUserConfig(envConfigName);
+  }
+
   const allConfigs = loadAllConfigs();
   const namedConfigs = getConfigNames(allConfigs);
 
@@ -56,7 +63,59 @@ async function resolveConfig() {
   return loadUserConfig(selectedName);
 }
 
+/**
+ * If the selected config has a `githubRepoName`, clone or pull the
+ * GitHub Pages repo into `pages/` and copy its `graph.json` into the
+ * local-storage directory so the dev server serves the live data.
+ */
+function syncPagesRepo(cfg: ExternalCortexConfig): void {
+  if (!cfg.githubRepoName) return;
+
+  const fullRepoName = cfg.githubRepoName;
+  const repoShortName = fullRepoName.split("/")[1]!;
+  const pagesDir = resolve("pages");
+  const repoDir = resolve(pagesDir, repoShortName);
+
+  try {
+    if (!existsSync(repoDir)) {
+      console.log(`\nCloning ${fullRepoName} into pages/...`);
+      mkdirSync(pagesDir, { recursive: true });
+      execFileSync("gh", ["repo", "clone", fullRepoName, repoDir], {
+        stdio: "inherit",
+      });
+    } else {
+      console.log(`\nPulling latest from ${fullRepoName}...`);
+      const httpsUrl = `https://github.com/${fullRepoName}.git`;
+      execFileSync("git", ["remote", "set-url", "origin", httpsUrl], {
+        cwd: repoDir,
+      });
+      execFileSync(
+        "git",
+        ["config", "--local", "credential.helper", "!gh auth git-credential"],
+        { cwd: repoDir }
+      );
+      execFileSync("git", ["pull", "origin", "main"], {
+        cwd: repoDir,
+        stdio: "inherit",
+      });
+    }
+
+    // Copy graph.json into local-storage so the dev server serves it
+    const srcGraph = resolve(repoDir, "graph.json");
+    const destGraph = resolve("local-storage", "graph.json");
+    if (existsSync(srcGraph)) {
+      copyFileSync(srcGraph, destGraph);
+      console.log("Copied graph.json from pages repo to local-storage/\n");
+    }
+  } catch (err) {
+    console.warn(
+      `\nWarning: Could not sync pages repo: ${err instanceof Error ? err.message : err}\n`
+    );
+  }
+}
+
 const config = await resolveConfig();
+syncPagesRepo(config);
 
 export default defineConfig({
   plugins: [react(), sqlJsWasmPlugin()],

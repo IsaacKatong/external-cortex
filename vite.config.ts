@@ -131,5 +131,6 @@ export default defineConfig({
     __EC_BORDER__: JSON.stringify(config.colors.border),
     __EC_ACCENT__: JSON.stringify(config.colors.accent),
     __EC_GITHUB_REPO_NAME__: JSON.stringify(config.githubRepoName),
+    __EC_ENCRYPTED__: JSON.stringify(config.password !== ""),
   },
 });

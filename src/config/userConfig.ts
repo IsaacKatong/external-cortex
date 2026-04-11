@@ -14,6 +14,8 @@ export interface ExternalCortexConfig {
   uiStyle: string;
   /** GitHub repository name used for hosting (e.g. `"my-cortex-site"`). */
   githubRepoName: string;
+  /** Password used to encrypt `graph.json`. Empty string means no encryption. */
+  password: string;
   /** Application color palette. */
   colors: ExternalCortexColors;
 }
@@ -57,6 +59,7 @@ export const CONFIG_DEFAULTS: ExternalCortexConfig = {
   hostingType: "GITHUB_PAGES",
   uiStyle: "BASIC_JSON",
   githubRepoName: "",
+  password: "",
   colors: {
     textPrimary: "#e0e0e0",
     textSecondary: "#a0a0a0",

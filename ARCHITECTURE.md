@@ -169,11 +169,13 @@ External Cortex stores user configuration at `~/.external-cortex/config.json`. T
     "hostingType": "GITHUB_PAGES",
     "uiStyle": "BASIC_JSON",
     "githubRepoName": "",
+    "password": "",
     "colors": { "textPrimary": "#e0e0e0", "textSecondary": "#a0a0a0", "background": "#1a1a1a", "border": "#444444", "accent": "#6cb4ee" }
   },
   "work-cortex": {
     "storageType": "GITHUB",
     "githubRepoName": "user/work-cortex-site",
+    "password": "my-secret",
     "colors": { "accent": "#ff6600" }
   }
 }
@@ -189,6 +191,19 @@ When running commands (`dev`, `build`, `deploy:github-pages`), the user is promp
 - **Deploy**: There is no default option — the user must explicitly choose which config to deploy.
 
 If only one config exists, it is used automatically without prompting.
+
+### Encryption
+
+If a config has a non-empty `password` field, `graph.json` is encrypted before deployment using AES-256-GCM with PBKDF2 key derivation (100,000 iterations, SHA-256). The encrypted payload is `base64(salt || iv || ciphertext + authTag)`.
+
+At build time, a compile-time constant `__EC_ENCRYPTED__` is set to `true` when the selected config has a password. The UI checks this flag:
+
+1. If encrypted, a black "Enter Password" screen is shown instead of the graph.
+2. The user enters their password and the browser decrypts `graph.json` using the Web Crypto API.
+3. If decryption fails (wrong password), an error is shown and the user can retry.
+4. On successful decryption, the graph loads normally.
+
+The password is never sent to the server or stored in the deployed bundle — only the encrypted `graph.json` is uploaded.
 
 ## Long-Term Vision
 

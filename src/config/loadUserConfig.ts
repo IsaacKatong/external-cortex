@@ -93,6 +93,7 @@ function isLegacySingleConfig(raw: Record<string, unknown>): boolean {
     "hostingType",
     "uiStyle",
     "githubRepoName",
+    "password",
     "colors",
   ];
   return knownKeys.some((key) => key in raw);
@@ -125,6 +126,7 @@ function parseConfig(raw: Record<string, unknown>): ExternalCortexConfig {
     hostingType: asString(raw["hostingType"], CONFIG_DEFAULTS.hostingType),
     uiStyle: asString(raw["uiStyle"], CONFIG_DEFAULTS.uiStyle),
     githubRepoName: asString(raw["githubRepoName"], CONFIG_DEFAULTS.githubRepoName),
+    password: asString(raw["password"], CONFIG_DEFAULTS.password),
     colors,
   };
 }

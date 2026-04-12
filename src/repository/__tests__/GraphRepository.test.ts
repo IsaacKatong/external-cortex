@@ -4,6 +4,7 @@ import { createGraphRepository } from "../GraphRepository.js";
 import type { ExternalGraph } from "../../external-storage/types.js";
 
 const emptyGraph: ExternalGraph = {
+  version: 0,
   datums: [],
   edges: [],
   datumTags: [],

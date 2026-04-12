@@ -138,6 +138,7 @@ describe("initializeDatabase", () => {
 
   describe("data insertion with empty graph", () => {
     const emptyGraph: ExternalGraph = {
+      version: 0,
       datums: [],
       edges: [],
       datumTags: [],
@@ -157,6 +158,7 @@ describe("initializeDatabase", () => {
 
   describe("data insertion with all object types", () => {
     const fullGraph: ExternalGraph = {
+      version: 0,
       datums: [{ id: "d1", name: "test", type: "MARKDOWN", content: "hello" }],
       edges: [{ fromDatumID: "d1", toDatumID: "d2" }],
       datumTags: [{ name: "tag1", datumID: "d1" }],

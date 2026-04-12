@@ -29,11 +29,12 @@ export function ExternalGraphView({
   onFreshDownload,
 }: ExternalGraphViewProps): ReactNode {
   const { auth } = useGitHubAuth();
-  const { status, errorMessage, markDirty, forceSave } = useSyncStatus(
+  const { status, errorMessage, version, markDirty, forceSave } = useSyncStatus(
     db ?? null,
     auth.token,
     GITHUB_REPO_NAME,
-    password
+    password,
+    graph.version
   );
 
   // Download fresh graph.json once when the user signs in
@@ -88,6 +89,15 @@ export function ExternalGraphView({
         <GitHubAuthButton />
         {auth.status === "signed_in" && (
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span
+              style={{
+                color: TEXT_SECONDARY,
+                fontSize: 11,
+                fontFamily: "monospace",
+              }}
+            >
+              v{version}
+            </span>
             <span style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
               {GITHUB_REPO_NAME}
             </span>

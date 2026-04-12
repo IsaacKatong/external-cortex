@@ -49,7 +49,11 @@ export function parseExternalGraph(json: string): ExternalGraph {
     edgeID: et.edgeID,
   }));
 
+  const version: number =
+    typeof parsed.version === "number" ? parsed.version : 0;
+
   return {
+    version,
     datums,
     edges,
     datumTags,

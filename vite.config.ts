@@ -141,8 +141,17 @@ function buildGraphJson(repoDir: string, password: string): void {
     // create plain-text-graph.json from graph.json as the source of truth
     if (existsSync(graphPath)) {
       const existing = readFileSync(graphPath, "utf-8");
-      // Only seed if graph.json looks like plaintext JSON (not encrypted)
-      if (existing.trimStart().startsWith("{")) {
+      // Check if this is an encrypted envelope or plaintext graph
+      let isEncrypted = false;
+      try {
+        const parsed = JSON.parse(existing);
+        isEncrypted = typeof parsed === "object" && parsed !== null && "graph_blob" in parsed;
+      } catch {
+        // Not valid JSON — legacy raw base64 ciphertext
+        isEncrypted = true;
+      }
+
+      if (!isEncrypted) {
         writeFileSync(plainTextPath, existing, "utf-8");
         console.log("Created plain-text-graph.json from existing graph.json");
       } else {
@@ -157,7 +166,18 @@ function buildGraphJson(repoDir: string, password: string): void {
   const plaintext = readFileSync(plainTextPath, "utf-8");
 
   if (password) {
-    const encrypted = encryptGraphJson(plaintext, password);
+    // Read version from the plaintext graph
+    let version = 0;
+    try {
+      const parsed = JSON.parse(plaintext);
+      if (typeof parsed.version === "number") {
+        version = parsed.version;
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    const encrypted = encryptGraphJson(plaintext, password, version);
     writeFileSync(graphPath, encrypted, "utf-8");
     console.log("Encrypted plain-text-graph.json → graph.json");
   } else {

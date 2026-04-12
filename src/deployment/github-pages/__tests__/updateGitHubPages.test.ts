@@ -8,7 +8,9 @@ vi.mock("../runCommand.js", () => ({
 }));
 
 vi.mock("../../../encryption/encrypt.js", () => ({
-  encryptGraphJson: vi.fn((plaintext: string, _password: string) => `ENCRYPTED:${plaintext}`),
+  encryptGraphJson: vi.fn((plaintext: string, _password: string, version: number = 0) =>
+    JSON.stringify({ graph_blob: `ENCRYPTED:${plaintext}`, version })
+  ),
 }));
 
 import { runCommand } from "../runCommand.js";
@@ -278,9 +280,10 @@ describe("updateGitHubPages", () => {
 
     updateGitHubPages("user/my-repo", "secret", projectRoot);
 
-    expect(readFileSync(resolve(repoDir, "graph.json"), "utf-8")).toBe(
-      'ENCRYPTED:{"datums":[]}'
-    );
+    const graphContent = readFileSync(resolve(repoDir, "graph.json"), "utf-8");
+    const envelope = JSON.parse(graphContent) as { graph_blob: string; version: number };
+    expect(envelope.graph_blob).toBe('ENCRYPTED:{"datums":[]}');
+    expect(envelope.version).toBe(0);
   });
 
   it("copies plain-text-graph.json to graph.json when no password", () => {

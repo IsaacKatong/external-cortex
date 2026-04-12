@@ -21,6 +21,7 @@ import type {
  */
 export function exportGraph(db: Database): ExternalGraph {
   return {
+    version: 0,
     datums: queryAll<Datum>(db, "SELECT id, name, type, content FROM Datum"),
     edges: queryAll<Edge>(db, "SELECT fromDatumID, toDatumID FROM Edge"),
     datumTags: queryAll<DatumTag>(db, "SELECT name, datumID FROM DatumTag"),

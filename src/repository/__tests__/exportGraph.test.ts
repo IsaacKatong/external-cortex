@@ -7,6 +7,7 @@ import type { ExternalGraph } from "../../external-storage/types.js";
 let db: Database;
 
 const SAMPLE_GRAPH: ExternalGraph = {
+  version: 0,
   datums: [
     { id: "d1", name: "Alpha", type: "note", content: "Hello" },
     { id: "d2", name: "Beta", type: "link", content: "https://example.com" },
@@ -34,6 +35,7 @@ describe("exportGraph", () => {
     const result = exportGraph(db);
 
     expect(result).toEqual({
+      version: 0,
       datums: [],
       edges: [],
       datumTags: [],

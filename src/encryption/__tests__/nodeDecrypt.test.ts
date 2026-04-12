@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { encryptGraphJson } from "../encrypt.js";
+import { encryptBlob } from "../encrypt.js";
 import { decryptGraphJson } from "../nodeDecrypt.js";
 
 describe("nodeDecrypt – decryptGraphJson", () => {
-  it("decrypts what encryptGraphJson encrypted", () => {
+  it("decrypts what encryptBlob encrypted", () => {
     const plaintext = '{"datums":[{"id":"1","name":"test","type":"note","content":"hello"}]}';
     const password = "my-secret-password";
 
-    const encrypted = encryptGraphJson(plaintext, password);
+    const encrypted = encryptBlob(plaintext, password);
     const decrypted = decryptGraphJson(encrypted, password);
 
     expect(decrypted).toBe(plaintext);
@@ -17,14 +17,14 @@ describe("nodeDecrypt – decryptGraphJson", () => {
     const plaintext = "{}";
     const password = "pass";
 
-    const encrypted = encryptGraphJson(plaintext, password);
+    const encrypted = encryptBlob(plaintext, password);
     const decrypted = decryptGraphJson(encrypted, password);
 
     expect(decrypted).toBe(plaintext);
   });
 
   it("throws on wrong password", () => {
-    const encrypted = encryptGraphJson("secret data", "correct-password");
+    const encrypted = encryptBlob("secret data", "correct-password");
 
     expect(() => decryptGraphJson(encrypted, "wrong-password")).toThrow();
   });
@@ -39,7 +39,7 @@ describe("nodeDecrypt – decryptGraphJson", () => {
     const plaintext = '{"name":"café ☕ résumé"}';
     const password = "test123";
 
-    const encrypted = encryptGraphJson(plaintext, password);
+    const encrypted = encryptBlob(plaintext, password);
     const decrypted = decryptGraphJson(encrypted, password);
 
     expect(decrypted).toBe(plaintext);

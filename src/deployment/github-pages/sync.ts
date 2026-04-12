@@ -10,6 +10,7 @@ import { loadAllConfigs, loadUserConfig } from "../../config/loadUserConfig.js";
 import { promptConfigName } from "../../config/promptConfigName.js";
 import { encryptGraphJson } from "../../encryption/encrypt.js";
 import { decryptGraphJson } from "../../encryption/nodeDecrypt.js";
+import type { EncryptedGraphEnvelope } from "../../external-storage/types.js";
 
 /**
  * Clone or pull the GitHub Pages repo for a given config.
@@ -52,6 +53,30 @@ function syncRepo(fullRepoName: string): string {
 }
 
 /**
+ * Parse an encrypted graph envelope from raw file content.
+ *
+ * Returns the envelope if the content has a `graph_blob` field,
+ * or wraps legacy raw-base64 content in an envelope with version 0.
+ * Returns `null` if the content is plaintext JSON.
+ */
+function parseEnvelope(content: string): EncryptedGraphEnvelope | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "graph_blob" in parsed
+    ) {
+      return parsed as EncryptedGraphEnvelope;
+    }
+    return null;
+  } catch {
+    // Not valid JSON — treat as legacy raw base64 ciphertext
+    return { graph_blob: content, version: 0 };
+  }
+}
+
+/**
  * Sync graph.json → plain-text-graph.json, then rebuild graph.json.
  *
  * The pulled graph.json has priority as the source of truth:
@@ -67,14 +92,10 @@ function syncGraphJson(repoDir: string, password: string): void {
   // Step 1: Derive plain-text-graph.json from the pulled graph.json
   if (existsSync(graphPath)) {
     const content = readFileSync(graphPath, "utf-8");
+    const envelope = parseEnvelope(content);
 
-    try {
-      JSON.parse(content);
-      // It's plaintext JSON — use as plain-text-graph.json
-      writeFileSync(plainTextPath, content, "utf-8");
-      console.log("Copied graph.json → plain-text-graph.json");
-    } catch {
-      // Not valid JSON — likely encrypted
+    if (envelope) {
+      // Encrypted content — decrypt the blob
       if (!password) {
         console.error(
           "graph.json appears encrypted but no password is configured.\n" +
@@ -84,7 +105,7 @@ function syncGraphJson(repoDir: string, password: string): void {
       }
 
       try {
-        const decrypted = decryptGraphJson(content, password);
+        const decrypted = decryptGraphJson(envelope.graph_blob, password);
         writeFileSync(plainTextPath, decrypted, "utf-8");
         console.log("Decrypted graph.json → plain-text-graph.json");
       } catch {
@@ -93,6 +114,10 @@ function syncGraphJson(repoDir: string, password: string): void {
         );
         process.exit(1);
       }
+    } else {
+      // Plaintext JSON — use as plain-text-graph.json
+      writeFileSync(plainTextPath, content, "utf-8");
+      console.log("Copied graph.json → plain-text-graph.json");
     }
   } else if (!existsSync(plainTextPath)) {
     console.log("No graph.json found. Nothing to sync.");
@@ -103,7 +128,18 @@ function syncGraphJson(repoDir: string, password: string): void {
   const plaintext = readFileSync(plainTextPath, "utf-8");
 
   if (password) {
-    const encrypted = encryptGraphJson(plaintext, password);
+    // Read version from the plaintext graph
+    let version = 0;
+    try {
+      const parsed = JSON.parse(plaintext);
+      if (typeof parsed.version === "number") {
+        version = parsed.version;
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    const encrypted = encryptGraphJson(plaintext, password, version);
     writeFileSync(graphPath, encrypted, "utf-8");
     console.log("Encrypted plain-text-graph.json → graph.json");
   } else {

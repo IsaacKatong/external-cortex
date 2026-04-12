@@ -8,14 +8,13 @@ import {
 /**
  * Encrypt a plaintext string using AES-256-GCM with a password (browser-side).
  *
- * Returns `base64(salt || iv || ciphertext + authTag)` — the same format
- * produced by the Node.js {@link encrypt.ts} and expected by {@link decrypt.ts}.
+ * Returns `base64(salt || iv || ciphertext + authTag)` — the raw blob.
  *
  * @param plaintext - The JSON string to encrypt.
  * @param password - The password to derive the encryption key from.
  * @returns The base64-encoded encrypted payload.
  */
-export async function encryptGraphJson(
+export async function encryptBlob(
   plaintext: string,
   password: string
 ): Promise<string> {
@@ -44,6 +43,26 @@ export async function encryptGraphJson(
     binary += String.fromCharCode(byte);
   }
   return btoa(binary);
+}
+
+/**
+ * Encrypt a graph JSON string and wrap it in the envelope format.
+ *
+ * Returns `JSON.stringify({ graph_blob, version })` so the version is
+ * readable without decryption (e.g. for CI version checks).
+ *
+ * @param plaintext - The graph JSON string to encrypt.
+ * @param password - The password to derive the encryption key from.
+ * @param version - The graph version number to include in the envelope.
+ * @returns The JSON-encoded encrypted envelope string.
+ */
+export async function encryptGraphJson(
+  plaintext: string,
+  password: string,
+  version: number = 0
+): Promise<string> {
+  const blob = await encryptBlob(plaintext, password);
+  return JSON.stringify({ graph_blob: blob, version });
 }
 
 async function deriveKey(

@@ -1,0 +1,70 @@
+name: Check graph.json version
+
+on:
+  pull_request:
+    paths:
+      - "graph.json"
+
+permissions:
+  contents: read
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Read new version from graph.json
+        id: new_version
+        run: |
+          if [ ! -f graph.json ]; then
+            echo "graph.json not found on PR branch"
+            exit 1
+          fi
+          # Extract version from JSON (works for both plain and encrypted envelope)
+          NEW_VERSION=$(python3 -c "
+          import json, sys
+          with open('graph.json') as f:
+              data = json.load(f)
+          print(data.get('version', 0))
+          ")
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "New version: $NEW_VERSION"
+
+      - name: Checkout base branch graph.json
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git show "origin/${{ github.base_ref }}:graph.json" > base-graph.json 2>/dev/null || echo '{}' > base-graph.json
+
+      - name: Read current version from base branch
+        id: base_version
+        run: |
+          BASE_VERSION=$(python3 -c "
+          import json, sys
+          try:
+              with open('base-graph.json') as f:
+                  data = json.load(f)
+              print(data.get('version', 0))
+          except:
+              print(0)
+          ")
+          echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Base version: $BASE_VERSION"
+
+      - name: Validate version increment
+        run: |
+          BASE=${{ steps.base_version.outputs.version }}
+          NEW=${{ steps.new_version.outputs.version }}
+          EXPECTED=$((BASE + 1))
+
+          echo "Base version: v$BASE"
+          echo "New version:  v$NEW"
+          echo "Expected:     v$EXPECTED"
+
+          if [ "$NEW" -ne "$EXPECTED" ]; then
+            echo "::error::Version check failed! Expected v$EXPECTED but got v$NEW."
+            exit 1
+          fi
+
+          echo "Version check passed: v$BASE → v$NEW"

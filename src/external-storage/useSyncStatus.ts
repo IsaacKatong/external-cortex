@@ -17,6 +17,8 @@ export type SyncStatusHook = {
   status: SyncStatus;
   /** Human-readable error message when `status` is `"error"`. */
   errorMessage: string | null;
+  /** Current graph version. */
+  version: number;
   /** Mark the graph as dirty (unsaved changes). Starts the debounce timer. */
   markDirty: () => void;
   /** Force an immediate save, bypassing the debounce timer. */
@@ -32,21 +34,24 @@ const DEBOUNCE_MS = 1_000;
  * after 1 second of inactivity. `forceSave()` saves immediately.
  *
  * If a password is provided, the exported JSON is encrypted before
- * committing to GitHub.
+ * committing to GitHub using the envelope format `{ graph_blob, version }`.
  *
  * @param db - The sql.js Database instance.
  * @param token - GitHub personal access token, or `null` if not signed in.
  * @param repoFullName - Full repository name in `owner/repo` format.
  * @param password - Password for encrypting graph.json. Empty string means no encryption.
+ * @param initialVersion - The initial version of the loaded graph.
  */
 export function useSyncStatus(
   db: Database | null,
   token: string | null,
   repoFullName: string,
-  password: string = ""
+  password: string = "",
+  initialVersion: number = 0
 ): SyncStatusHook {
   const [status, setStatus] = useState<SyncStatus>("synced");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [version, setVersion] = useState<number>(initialVersion);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Prevent concurrent saves
   const savingRef = useRef(false);
@@ -60,9 +65,19 @@ export function useSyncStatus(
 
     try {
       const graph = exportGraph(db);
-      const json = JSON.stringify(graph, null, 2);
-      const content = password ? await encryptGraphJson(json, password) : json;
+      const nextVersion = version + 1;
+
+      // Include version in the exported graph JSON
+      const graphWithVersion = { version: nextVersion, ...graph };
+      const json = JSON.stringify(graphWithVersion, null, 2);
+
+      // Build the final content: encrypted envelope or plain JSON
+      const content = password
+        ? await encryptGraphJson(json, password, nextVersion)
+        : json;
+
       await commitGraphJson(token, repoFullName, content);
+      setVersion(nextVersion);
       setStatus("synced");
     } catch (err: unknown) {
       const message =
@@ -72,7 +87,7 @@ export function useSyncStatus(
     } finally {
       savingRef.current = false;
     }
-  }, [db, token, repoFullName, password]);
+  }, [db, token, repoFullName, password, version]);
 
   const markDirty = useCallback((): void => {
     if (!token || !repoFullName) return;
@@ -99,5 +114,5 @@ export function useSyncStatus(
     await save();
   }, [save]);
 
-  return { status, errorMessage, markDirty, forceSave };
+  return { status, errorMessage, version, markDirty, forceSave };
 }

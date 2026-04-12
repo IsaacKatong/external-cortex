@@ -2,6 +2,7 @@ import type { ExternalGraph } from "../../external-storage/types.js";
 
 export function createTestGraph(): ExternalGraph {
   return {
+    version: 0,
     datums: [
       {
         id: "d1",

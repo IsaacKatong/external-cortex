@@ -73,6 +73,10 @@ describe("parseExternalGraph", () => {
       expect(graph.datumDimensions).toEqual([]);
       expect(graph.datumTagAssociations).toEqual([]);
     });
+
+    it("defaults version to 0 when not present", () => {
+      expect(graph.version).toBe(0);
+    });
   });
 
   it("throws on invalid JSON", () => {
@@ -87,5 +91,16 @@ describe("parseExternalGraph", () => {
     expect(graph.datumDimensions).toEqual([]);
     expect(graph.datumTagAssociations).toEqual([]);
     expect(graph.edgeTags).toEqual([]);
+    expect(graph.version).toBe(0);
+  });
+
+  it("parses version when present", () => {
+    const graph = parseExternalGraph('{"version": 42}');
+    expect(graph.version).toBe(42);
+  });
+
+  it("defaults non-numeric version to 0", () => {
+    const graph = parseExternalGraph('{"version": "not-a-number"}');
+    expect(graph.version).toBe(0);
   });
 });

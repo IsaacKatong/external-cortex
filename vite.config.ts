@@ -157,17 +157,19 @@ function tryDecrypt(
 }
 
 /**
- * Seed plain-text-graph.json from graph.json if it doesn't exist yet.
+ * Derive plain-text-graph.json from graph.json.
  *
- * Decrypts graph.json if encrypted, using the configured password or
- * prompting the user if the configured password fails.
+ * Always overwrites plain-text-graph.json so it stays in sync with the
+ * pulled graph.json (which may have been updated on the remote).
+ * Decrypts if encrypted, using the configured password or prompting the
+ * user if the configured password fails.
  * Never re-encrypts — encryption is handled exclusively by the deploy script.
  */
-async function seedPlainTextGraph(repoDir: string, password: string): Promise<void> {
+async function syncPlainTextGraph(repoDir: string, password: string): Promise<void> {
   const plainTextPath = resolve(repoDir, "plain-text-graph.json");
   const graphPath = resolve(repoDir, "graph.json");
 
-  if (existsSync(plainTextPath) || !existsSync(graphPath)) return;
+  if (!existsSync(graphPath)) return;
 
   const existing = readFileSync(graphPath, "utf-8");
   const envelope = parseEnvelope(existing);
@@ -175,7 +177,7 @@ async function seedPlainTextGraph(repoDir: string, password: string): Promise<vo
   if (!envelope) {
     // Plaintext graph.json — use as plain-text-graph.json
     writeFileSync(plainTextPath, existing, "utf-8");
-    console.log("Created plain-text-graph.json from existing graph.json");
+    console.log("Copied graph.json → plain-text-graph.json");
     return;
   }
 
@@ -209,7 +211,7 @@ const config = await resolveConfig();
 const repoDir = syncPagesRepo(config);
 
 if (repoDir) {
-  await seedPlainTextGraph(repoDir, config.password);
+  await syncPlainTextGraph(repoDir, config.password);
 }
 
 /**

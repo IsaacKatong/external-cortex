@@ -89,6 +89,11 @@ function syncGraphJson(repoDir: string, password: string): void {
   const plainTextPath = resolve(repoDir, "plain-text-graph.json");
   const graphPath = resolve(repoDir, "graph.json");
 
+  // Track whether we derived plain-text-graph.json from graph.json.
+  // If so, graph.json is already correct and re-encrypting would only
+  // produce a different ciphertext (random salt/IV) with no content change.
+  let derivedFromGraph = false;
+
   // Step 1: Derive plain-text-graph.json from the pulled graph.json
   if (existsSync(graphPath)) {
     const content = readFileSync(graphPath, "utf-8");
@@ -106,8 +111,21 @@ function syncGraphJson(repoDir: string, password: string): void {
 
       try {
         const decrypted = decryptGraphJson(envelope.graph_blob, password);
-        writeFileSync(plainTextPath, decrypted, "utf-8");
+        // Ensure the plaintext has the correct version from the envelope
+        // (the blob may have version 0 due to an earlier bug)
+        let plainTextContent = decrypted;
+        try {
+          const parsed = JSON.parse(decrypted);
+          if (typeof parsed === "object" && parsed !== null) {
+            parsed.version = envelope.version;
+            plainTextContent = JSON.stringify(parsed, null, 2);
+          }
+        } catch {
+          // Not valid JSON — write as-is
+        }
+        writeFileSync(plainTextPath, plainTextContent, "utf-8");
         console.log("Decrypted graph.json → plain-text-graph.json");
+        derivedFromGraph = true;
       } catch {
         console.error(
           "Failed to decrypt graph.json. Check that your password is correct."
@@ -118,13 +136,21 @@ function syncGraphJson(repoDir: string, password: string): void {
       // Plaintext JSON — use as plain-text-graph.json
       writeFileSync(plainTextPath, content, "utf-8");
       console.log("Copied graph.json → plain-text-graph.json");
+      derivedFromGraph = true;
     }
   } else if (!existsSync(plainTextPath)) {
     console.log("No graph.json found. Nothing to sync.");
     return;
   }
 
-  // Step 2: Rebuild graph.json from plain-text-graph.json
+  // Step 2: Rebuild graph.json from plain-text-graph.json.
+  // Skip if we just derived the plaintext from graph.json — re-encrypting
+  // would only change the ciphertext (random salt/IV) without changing content.
+  if (derivedFromGraph) {
+    console.log("graph.json is already up to date (source of truth).");
+    return;
+  }
+
   const plaintext = readFileSync(plainTextPath, "utf-8");
 
   if (password) {

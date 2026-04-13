@@ -68,7 +68,8 @@ export function useSyncStatus(
       const nextVersion = version + 1;
 
       // Include version in the exported graph JSON
-      const graphWithVersion = { version: nextVersion, ...graph };
+      // Spread graph first so the explicit version takes precedence over graph.version (which is 0 from exportGraph)
+      const graphWithVersion = { ...graph, version: nextVersion };
       const json = JSON.stringify(graphWithVersion, null, 2);
 
       // Build the final content: encrypted envelope or plain JSON

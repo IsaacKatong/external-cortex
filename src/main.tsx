@@ -96,9 +96,9 @@ async function loadAndRender(
 ): Promise<void> {
   const graph = parseExternalGraph(json);
 
-  // If the envelope carried a version (encrypted path), use it.
-  // Otherwise the version was already parsed from the JSON.
-  if (envelopeVersion > 0 && graph.version === 0) {
+  // The envelope version is the source of truth for encrypted graphs.
+  // Always use it when present (envelopeVersion > 0).
+  if (envelopeVersion > 0) {
     graph.version = envelopeVersion;
   }
 
@@ -133,7 +133,7 @@ async function loadAndRender(
                 freshJson = fresh;
               }
               const freshGraph = parseExternalGraph(freshJson);
-              if (freshEnvelopeVersion > 0 && freshGraph.version === 0) {
+              if (freshEnvelopeVersion > 0) {
                 freshGraph.version = freshEnvelopeVersion;
               }
               const freshLoadData = await initializeDatabase({

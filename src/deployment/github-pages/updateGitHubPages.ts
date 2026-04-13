@@ -128,6 +128,9 @@ function buildGraphJson(repoDir: string, password: string): void {
   const graphPath = resolve(repoDir, "graph.json");
 
   if (!existsSync(plainTextPath)) {
+    // First time: if graph.json exists but plain-text-graph.json doesn't,
+    // create plain-text-graph.json from graph.json as the source of truth.
+    // Since graph.json is already correct, no need to re-encrypt.
     if (existsSync(graphPath)) {
       const existing = readFileSync(graphPath, "utf-8");
       // Check if this is an encrypted envelope or plaintext graph
@@ -143,14 +146,13 @@ function buildGraphJson(repoDir: string, password: string): void {
       if (!isEncrypted) {
         writeFileSync(plainTextPath, existing, "utf-8");
         console.log("Created plain-text-graph.json from existing graph.json");
-      } else {
-        return;
       }
-    } else {
-      return;
     }
+    // graph.json is already correct — don't re-encrypt
+    return;
   }
 
+  // plain-text-graph.json existed before this run — rebuild graph.json from it
   const plaintext = readFileSync(plainTextPath, "utf-8");
 
   if (password) {

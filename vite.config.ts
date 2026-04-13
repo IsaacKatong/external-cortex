@@ -30,7 +30,8 @@ function sqlJsWasmPlugin(): Plugin {
       const require = createRequire(import.meta.url);
       const sqlJsPath = dirname(require.resolve("sql.js"));
       const wasmSrc = resolve(sqlJsPath, "sql-wasm-browser.wasm");
-      const wasmDest = resolve("local-storage", "sql-wasm-browser.wasm");
+      // Copy WASM into the active public dir (pages repo or local-storage)
+      const wasmDest = resolve(publicDir, "sql-wasm-browser.wasm");
 
       if (existsSync(wasmSrc) && !existsSync(wasmDest)) {
         copyFileSync(wasmSrc, wasmDest);
@@ -138,7 +139,8 @@ function buildGraphJson(repoDir: string, password: string): void {
 
   if (!existsSync(plainTextPath)) {
     // First time: if graph.json exists but plain-text-graph.json doesn't,
-    // create plain-text-graph.json from graph.json as the source of truth
+    // create plain-text-graph.json from graph.json as the source of truth.
+    // Since graph.json is already correct, no need to re-encrypt.
     if (existsSync(graphPath)) {
       const existing = readFileSync(graphPath, "utf-8");
       // Check if this is an encrypted envelope or plaintext graph
@@ -156,13 +158,13 @@ function buildGraphJson(repoDir: string, password: string): void {
         console.log("Created plain-text-graph.json from existing graph.json");
       } else {
         console.warn("Warning: graph.json appears encrypted but no plain-text-graph.json found.");
-        return;
       }
-    } else {
-      return;
     }
+    // graph.json is already correct — don't re-encrypt
+    return;
   }
 
+  // plain-text-graph.json existed before this run — rebuild graph.json from it
   const plaintext = readFileSync(plainTextPath, "utf-8");
 
   if (password) {
@@ -207,6 +209,12 @@ const publicDir = repoDir ?? "local-storage";
  * This plugin disables the default public dir copy during build and
  * replaces it with one that skips `.git`.
  */
+/**
+ * Files/dirs that are produced by the Vite build itself (index.html, assets/).
+ * These must NOT be overwritten by files from the public dir (pages repo).
+ */
+const BUILD_OUTPUT = new Set(["index.html", "assets"]);
+
 function safePublicDirCopyPlugin(): Plugin {
   return {
     name: "safe-public-dir-copy",
@@ -218,14 +226,20 @@ function safePublicDirCopyPlugin(): Plugin {
       const src = resolve(publicDir);
       const dest = resolve("dist");
       for (const entry of readdirSync(src)) {
-        if (entry === ".git") continue;
+        if (entry === ".git" || BUILD_OUTPUT.has(entry)) continue;
         cpSync(join(src, entry), join(dest, entry), { recursive: true });
       }
     },
   };
 }
 
+// For GitHub Pages, the site is served under /<repo-short-name>/
+const base = config.hostingType === "GITHUB_PAGES" && config.githubRepoName
+  ? `/${config.githubRepoName.split("/")[1]!}/`
+  : "/";
+
 export default defineConfig({
+  base,
   plugins: [react(), sqlJsWasmPlugin(), safePublicDirCopyPlugin()],
   publicDir,
   define: {

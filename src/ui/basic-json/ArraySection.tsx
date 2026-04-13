@@ -10,6 +10,8 @@ export type ArraySectionProps<T> = {
   validators?: Record<string, FieldValidator>;
   itemKey: (item: T) => string;
   onSave: (values: Record<string, string | number>) => void;
+  /** When false, the add (+) button is hidden. Defaults to true. */
+  canEdit?: boolean;
 };
 
 export function ArraySection<T>({
@@ -19,6 +21,7 @@ export function ArraySection<T>({
   validators,
   itemKey,
   onSave,
+  canEdit = true,
 }: ArraySectionProps<T>): ReactNode {
   const [adding, setAdding] = useState(false);
 
@@ -53,7 +56,7 @@ export function ArraySection<T>({
           onSave={handleSave}
           onCancel={() => setAdding(false)}
         />
-      ) : (
+      ) : canEdit ? (
         <button
           onClick={() => setAdding(true)}
           data-testid={`add-${title.toLowerCase()}-button`}
@@ -68,7 +71,7 @@ export function ArraySection<T>({
         >
           +
         </button>
-      )}
+      ) : null}
     </section>
   );
 }

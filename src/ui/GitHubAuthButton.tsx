@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { useGitHubAuth } from "../github-auth/GitHubAuthContext.js";
+import { useGitHubAuth } from "../auth/github-auth/GitHubAuthContext.js";
 import { BORDER, TEXT_SECONDARY, ACCENT } from "../config/colors.js";
 
 /**

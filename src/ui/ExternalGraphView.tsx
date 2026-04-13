@@ -4,7 +4,8 @@ import type { ExternalGraph } from "../external-storage/types.js";
 import type { GraphRepository } from "../repository/GraphRepository.js";
 import { UI_STYLE, UIStyle } from "../config/ui-style.js";
 import { GITHUB_REPO_NAME } from "../config/github.js";
-import { useGitHubAuth } from "../github-auth/GitHubAuthContext.js";
+import { useGitHubAuth } from "../auth/github-auth/GitHubAuthContext.js";
+import { useCanEditGraph } from "../auth/canEditGraph.js";
 import { useSyncStatus } from "../external-storage/useSyncStatus.js";
 import { GitHubAuthButton } from "./GitHubAuthButton.js";
 import { SyncStatusBar } from "./SyncStatusBar.js";
@@ -29,6 +30,7 @@ export function ExternalGraphView({
   onFreshDownload,
 }: ExternalGraphViewProps): ReactNode {
   const { auth } = useGitHubAuth();
+  const canEdit = useCanEditGraph();
   const { status, errorMessage, version, markDirty, forceSave } = useSyncStatus(
     db ?? null,
     auth.token,
@@ -61,6 +63,7 @@ export function ExternalGraphView({
             graph={graph}
             {...(repository ? { repository } : {})}
             onMutation={showGitHub && auth.status === "signed_in" ? markDirty : undefined}
+            canEdit={canEdit}
           />
         );
     }

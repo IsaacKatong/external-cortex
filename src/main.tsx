@@ -4,7 +4,7 @@ import { parseExternalGraph } from "./external-storage/parseExternalGraph.js";
 import { initializeDatabase } from "./repository/initializeDatabase.js";
 import { createGraphRepository } from "./repository/GraphRepository.js";
 import { ExternalGraphView } from "./ui/ExternalGraphView.js";
-import { GitHubAuthProvider } from "./github-auth/GitHubAuthContext.js";
+import { GitHubAuthProvider } from "./auth/github-auth/GitHubAuthContext.js";
 import { PasswordPrompt } from "./ui/PasswordPrompt.js";
 import { decryptGraphJson } from "./encryption/decrypt.js";
 import { downloadGraphJson } from "./github-api/commitFile.js";

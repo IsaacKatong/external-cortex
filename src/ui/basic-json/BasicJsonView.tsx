@@ -26,9 +26,11 @@ export type BasicJsonViewProps = {
   repository?: GraphRepository;
   /** Called after every mutation so the sync layer can track dirty state. */
   onMutation?: () => void;
+  /** When false, add (+) buttons are hidden. Defaults to true. */
+  canEdit?: boolean;
 };
 
-export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewProps): ReactNode {
+export function BasicJsonView({ graph, repository, onMutation, canEdit = true }: BasicJsonViewProps): ReactNode {
   const [datums, setDatums] = useState<Datum[]>(graph.datums);
   const [edges, setEdges] = useState<Edge[]>(graph.edges);
   const [datumTags, setDatumTags] = useState<DatumTag[]>(graph.datumTags);
@@ -188,6 +190,7 @@ export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewPr
         validators={datumValidators}
         itemKey={(d) => d.id}
         onSave={addDatum}
+        canEdit={canEdit}
       />
 
       <ArraySection<Edge>
@@ -196,6 +199,7 @@ export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewPr
         fields={EDGE_FIELDS}
         itemKey={(e) => `${e.fromDatumID}->${e.toDatumID}`}
         onSave={addEdge}
+        canEdit={canEdit}
       />
 
       <ArraySection<DatumTag>
@@ -204,6 +208,7 @@ export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewPr
         fields={DATUM_TAG_FIELDS}
         itemKey={(dt) => `${dt.name}-${dt.datumID}`}
         onSave={addDatumTag}
+        canEdit={canEdit}
       />
 
       <ArraySection<DatumDimension>
@@ -212,6 +217,7 @@ export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewPr
         fields={DATUM_DIMENSION_FIELDS}
         itemKey={(dd) => `${dd.name}-${dd.datumID}`}
         onSave={addDatumDimension}
+        canEdit={canEdit}
       />
 
       <ArraySection<DatumTagAssociation>
@@ -220,6 +226,7 @@ export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewPr
         fields={DATUM_TAG_ASSOCIATION_FIELDS}
         itemKey={(a) => `${a.childTagName}-${a.parentTagName}-${a.type}`}
         onSave={addDatumTagAssociation}
+        canEdit={canEdit}
       />
 
       <ArraySection<EdgeTag>
@@ -228,6 +235,7 @@ export function BasicJsonView({ graph, repository, onMutation }: BasicJsonViewPr
         fields={EDGE_TAG_FIELDS}
         itemKey={(et) => `${et.name}-${et.edgeID}`}
         onSave={addEdgeTag}
+        canEdit={canEdit}
       />
     </div>
   );

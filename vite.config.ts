@@ -17,6 +17,8 @@ import { promptConfigName } from "./src/config/promptConfigName.js";
 import { DEFAULT_CONFIG_NAME } from "./src/config/userConfig.js";
 import type { ExternalCortexConfig } from "./src/config/userConfig.js";
 import { parseEnvelope } from "./src/encryption/parseEnvelope.js";
+import { decryptGraphJson } from "./src/encryption/nodeDecrypt.js";
+import { promptSyncPassword } from "./src/deployment/github-pages/promptSyncPassword.js";
 
 /**
  * Copies the sql.js WASM binary from node_modules into the public directory
@@ -125,13 +127,43 @@ function syncPagesRepo(cfg: ExternalCortexConfig): string | null {
 }
 
 /**
+ * Try to decrypt graph.json with the given password and write plain-text-graph.json.
+ *
+ * @returns true if decryption succeeded, false otherwise.
+ */
+function tryDecrypt(
+  graphBlob: string,
+  password: string,
+  envelopeVersion: number,
+  plainTextPath: string
+): boolean {
+  try {
+    const decrypted = decryptGraphJson(graphBlob, password);
+    let plainTextContent = decrypted;
+    try {
+      const parsed = JSON.parse(decrypted);
+      if (typeof parsed === "object" && parsed !== null) {
+        parsed.version = envelopeVersion;
+        plainTextContent = JSON.stringify(parsed, null, 2);
+      }
+    } catch {
+      // Not valid JSON — write as-is
+    }
+    writeFileSync(plainTextPath, plainTextContent, "utf-8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Seed plain-text-graph.json from graph.json if it doesn't exist yet.
  *
- * Only creates plain-text-graph.json when graph.json is unencrypted plaintext.
- * Never re-encrypts — encryption is handled exclusively by the deploy script
- * which validates the password before writing.
+ * Decrypts graph.json if encrypted, using the configured password or
+ * prompting the user if the configured password fails.
+ * Never re-encrypts — encryption is handled exclusively by the deploy script.
  */
-function seedPlainTextGraph(repoDir: string): void {
+async function seedPlainTextGraph(repoDir: string, password: string): Promise<void> {
   const plainTextPath = resolve(repoDir, "plain-text-graph.json");
   const graphPath = resolve(repoDir, "graph.json");
 
@@ -144,8 +176,32 @@ function seedPlainTextGraph(repoDir: string): void {
     // Plaintext graph.json — use as plain-text-graph.json
     writeFileSync(plainTextPath, existing, "utf-8");
     console.log("Created plain-text-graph.json from existing graph.json");
+    return;
+  }
+
+  // Encrypted — try configured password
+  if (password) {
+    if (tryDecrypt(envelope.graph_blob, password, envelope.version, plainTextPath)) {
+      console.log("Decrypted graph.json → plain-text-graph.json");
+      return;
+    }
+    console.log("Configured password failed to decrypt graph.json.");
   } else {
-    console.warn("Warning: graph.json appears encrypted but no plain-text-graph.json found.");
+    console.log("graph.json appears encrypted but no password is configured.");
+  }
+
+  // Prompt for the correct password
+  const enteredPassword = await promptSyncPassword();
+
+  if (!enteredPassword) {
+    console.warn("Warning: Could not decrypt graph.json. plain-text-graph.json was not created.");
+    return;
+  }
+
+  if (tryDecrypt(envelope.graph_blob, enteredPassword, envelope.version, plainTextPath)) {
+    console.log("Decrypted graph.json → plain-text-graph.json");
+  } else {
+    console.warn("Provided password is incorrect. plain-text-graph.json was not created.");
   }
 }
 
@@ -153,7 +209,7 @@ const config = await resolveConfig();
 const repoDir = syncPagesRepo(config);
 
 if (repoDir) {
-  seedPlainTextGraph(repoDir);
+  await seedPlainTextGraph(repoDir, config.password);
 }
 
 /**

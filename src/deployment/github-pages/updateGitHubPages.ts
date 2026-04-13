@@ -11,6 +11,9 @@ import {
 import { resolve, join } from "node:path";
 import { runCommand } from "./runCommand.js";
 import { encryptGraphJson } from "../../encryption/encrypt.js";
+import { decryptGraphJson } from "../../encryption/nodeDecrypt.js";
+import { parseEnvelope } from "../../encryption/parseEnvelope.js";
+import { promptPasswordAction } from "./promptPasswordAction.js";
 
 const PRESERVED_FILES = new Set([".git", ".gitignore", "graph.json", "plain-text-graph.json"]);
 
@@ -28,11 +31,11 @@ const PRESERVED_FILES = new Set([".git", ".gitignore", "graph.json", "plain-text
  * @param password - Password for encryption. Empty string means no encryption.
  * @param projectRoot - Absolute path to the project root. Defaults to `process.cwd()`.
  */
-export function updateGitHubPages(
+export async function updateGitHubPages(
   fullRepoName: string,
   password: string = "",
   projectRoot: string = process.cwd()
-): void {
+): Promise<void> {
   const repoShortName = fullRepoName.split("/")[1]!;
   const pagesDir = resolve(projectRoot, "pages");
   const repoDir = resolve(pagesDir, repoShortName);
@@ -41,7 +44,7 @@ export function updateGitHubPages(
   ensureClone(fullRepoName, pagesDir, repoDir);
   configureRemote(repoDir, fullRepoName);
   copyBuildOutput(distDir, repoDir);
-  buildGraphJson(repoDir, password);
+  await buildGraphJson(repoDir, password);
   commitAndPush(repoDir);
 }
 
@@ -117,62 +120,117 @@ function copyBuildOutput(distDir: string, repoDir: string): void {
 }
 
 /**
- * Build graph.json from plain-text-graph.json.
+ * Read the version number from a JSON string.
+ * Returns 0 if the string is not valid JSON or has no version field.
+ */
+function readVersion(json: string): number {
+  try {
+    const parsed = JSON.parse(json);
+    return typeof parsed.version === "number" ? parsed.version : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Encrypt plaintext graph JSON and write both graph.json and plain-text-graph.json.
+ */
+function encryptAndWrite(
+  plaintext: string,
+  password: string,
+  graphPath: string,
+  plainTextPath: string
+): void {
+  const version = readVersion(plaintext);
+  const encrypted = encryptGraphJson(plaintext, password, version);
+  writeFileSync(graphPath, encrypted, "utf-8");
+  writeFileSync(plainTextPath, plaintext, "utf-8");
+  console.log("Encrypted plain-text-graph.json → graph.json");
+}
+
+/**
+ * Build graph.json, validating encryption state before writing.
  *
- * If a password is set, encrypts the plaintext and wraps it in the
- * envelope format `{ graph_blob, version }`. Otherwise copies as-is.
+ * When a password is configured and graph.json is already encrypted:
+ * 1. Try decrypting with the configured password.
+ *    - If it matches and content is unchanged → skip (no spurious diff).
+ *    - If it matches but plaintext content changed → re-encrypt.
+ * 2. If the password doesn't match, prompt the user to provide the
+ *    old password or overwrite from plain-text-graph.json.
+ *
+ * If no password is configured, copies plain-text-graph.json as-is.
  * If plain-text-graph.json doesn't exist, seeds it from graph.json.
  */
-function buildGraphJson(repoDir: string, password: string): void {
+async function buildGraphJson(repoDir: string, password: string): Promise<void> {
   const plainTextPath = resolve(repoDir, "plain-text-graph.json");
   const graphPath = resolve(repoDir, "graph.json");
 
+  // Seed plain-text-graph.json from graph.json if it doesn't exist yet
   if (!existsSync(plainTextPath)) {
-    // First time: if graph.json exists but plain-text-graph.json doesn't,
-    // create plain-text-graph.json from graph.json as the source of truth.
-    // Since graph.json is already correct, no need to re-encrypt.
     if (existsSync(graphPath)) {
       const existing = readFileSync(graphPath, "utf-8");
-      // Check if this is an encrypted envelope or plaintext graph
-      let isEncrypted = false;
-      try {
-        const parsed = JSON.parse(existing);
-        isEncrypted = typeof parsed === "object" && parsed !== null && "graph_blob" in parsed;
-      } catch {
-        // Not valid JSON — legacy raw base64 ciphertext
-        isEncrypted = true;
-      }
-
-      if (!isEncrypted) {
+      const envelope = parseEnvelope(existing);
+      if (!envelope) {
+        // Plaintext graph.json — use as plain-text-graph.json
         writeFileSync(plainTextPath, existing, "utf-8");
         console.log("Created plain-text-graph.json from existing graph.json");
       }
     }
-    // graph.json is already correct — don't re-encrypt
+    // graph.json is already correct (or doesn't exist) — nothing to do
     return;
   }
 
-  // plain-text-graph.json existed before this run — rebuild graph.json from it
-  const plaintext = readFileSync(plainTextPath, "utf-8");
-
-  if (password) {
-    // Read version from the plaintext graph
-    let version = 0;
-    try {
-      const parsed = JSON.parse(plaintext);
-      if (typeof parsed.version === "number") {
-        version = parsed.version;
-      }
-    } catch {
-      // ignore parse errors
-    }
-
-    const encrypted = encryptGraphJson(plaintext, password, version);
-    writeFileSync(graphPath, encrypted, "utf-8");
-    console.log("Encrypted plain-text-graph.json → graph.json");
-  } else {
+  // No password → copy plaintext as-is
+  if (!password) {
     copyFileSync(plainTextPath, graphPath);
+    return;
   }
+
+  // Password is configured — check existing graph.json encryption state
+  if (existsSync(graphPath)) {
+    const content = readFileSync(graphPath, "utf-8");
+    const envelope = parseEnvelope(content);
+
+    if (envelope) {
+      // graph.json is encrypted — verify the password matches
+      try {
+        const decrypted = decryptGraphJson(envelope.graph_blob, password);
+        // Password matches — check if plaintext content has changed
+        const plaintext = readFileSync(plainTextPath, "utf-8");
+        if (decrypted === plaintext) {
+          console.log("graph.json already up to date, skipping re-encryption.");
+          return;
+        }
+        // Content changed — re-encrypt with current password
+        console.log("plain-text-graph.json changed, re-encrypting...");
+        encryptAndWrite(plaintext, password, graphPath, plainTextPath);
+        return;
+      } catch {
+        // Password mismatch — prompt the user
+        const action = await promptPasswordAction();
+
+        if (action.kind === "reencrypt") {
+          try {
+            const decrypted = decryptGraphJson(envelope.graph_blob, action.oldPassword);
+            // Re-encrypt with new password, update plain-text-graph.json
+            encryptAndWrite(decrypted, password, graphPath, plainTextPath);
+            console.log("Re-encrypted graph.json with the new password.");
+            return;
+          } catch {
+            console.error("Old password is incorrect. Aborting deployment.");
+            process.exit(1);
+          }
+        }
+
+        // action.kind === "overwrite" — fall through to encrypt from plaintext
+        console.log("Overwriting graph.json from plain-text-graph.json...");
+      }
+    }
+  }
+
+  // Encrypt from plain-text-graph.json (new graph, plaintext graph, or overwrite)
+  const plaintext = readFileSync(plainTextPath, "utf-8");
+  encryptAndWrite(plaintext, password, graphPath, plainTextPath);
 }
 
 /**

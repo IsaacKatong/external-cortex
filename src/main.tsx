@@ -9,31 +9,9 @@ import { PasswordPrompt } from "./ui/PasswordPrompt.js";
 import { decryptGraphJson } from "./encryption/decrypt.js";
 import { downloadGraphJson } from "./github-api/commitFile.js";
 import { GITHUB_REPO_NAME } from "./config/github.js";
-import type { EncryptedGraphEnvelope } from "./external-storage/types.js";
+import { parseEnvelope } from "./encryption/parseEnvelope.js";
 
 const root = createRoot(document.getElementById("root")!);
-
-/**
- * Check if the raw text is an encrypted graph envelope (has `graph_blob` field).
- *
- * Returns the parsed envelope if encrypted, or `null` if it's plaintext JSON.
- */
-function parseEnvelope(rawText: string): EncryptedGraphEnvelope | null {
-  try {
-    const parsed = JSON.parse(rawText);
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "graph_blob" in parsed
-    ) {
-      return parsed as EncryptedGraphEnvelope;
-    }
-    return null;
-  } catch {
-    // Not valid JSON at all — treat as legacy raw base64 ciphertext
-    return { graph_blob: rawText, version: 0 };
-  }
-}
 
 /**
  * Try to load a fresh graph.json from the GitHub repo API.

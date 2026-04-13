@@ -16,7 +16,7 @@ import { loadAllConfigs, getConfigNames, loadUserConfig } from "./src/config/loa
 import { promptConfigName } from "./src/config/promptConfigName.js";
 import { DEFAULT_CONFIG_NAME } from "./src/config/userConfig.js";
 import type { ExternalCortexConfig } from "./src/config/userConfig.js";
-import { encryptGraphJson } from "./src/encryption/encrypt.js";
+import { parseEnvelope } from "./src/encryption/parseEnvelope.js";
 
 /**
  * Copies the sql.js WASM binary from node_modules into the public directory
@@ -125,66 +125,27 @@ function syncPagesRepo(cfg: ExternalCortexConfig): string | null {
 }
 
 /**
- * Build graph.json from the pages repo's plain-text-graph.json.
+ * Seed plain-text-graph.json from graph.json if it doesn't exist yet.
  *
- * If a password is configured, encrypts the plaintext and writes the
- * result to graph.json. If no password, copies plain-text-graph.json
- * as-is to graph.json.
- *
- * Falls back to the existing graph.json if plain-text-graph.json doesn't exist.
+ * Only creates plain-text-graph.json when graph.json is unencrypted plaintext.
+ * Never re-encrypts — encryption is handled exclusively by the deploy script
+ * which validates the password before writing.
  */
-function buildGraphJson(repoDir: string, password: string): void {
+function seedPlainTextGraph(repoDir: string): void {
   const plainTextPath = resolve(repoDir, "plain-text-graph.json");
   const graphPath = resolve(repoDir, "graph.json");
 
-  if (!existsSync(plainTextPath)) {
-    // First time: if graph.json exists but plain-text-graph.json doesn't,
-    // create plain-text-graph.json from graph.json as the source of truth.
-    // Since graph.json is already correct, no need to re-encrypt.
-    if (existsSync(graphPath)) {
-      const existing = readFileSync(graphPath, "utf-8");
-      // Check if this is an encrypted envelope or plaintext graph
-      let isEncrypted = false;
-      try {
-        const parsed = JSON.parse(existing);
-        isEncrypted = typeof parsed === "object" && parsed !== null && "graph_blob" in parsed;
-      } catch {
-        // Not valid JSON — legacy raw base64 ciphertext
-        isEncrypted = true;
-      }
+  if (existsSync(plainTextPath) || !existsSync(graphPath)) return;
 
-      if (!isEncrypted) {
-        writeFileSync(plainTextPath, existing, "utf-8");
-        console.log("Created plain-text-graph.json from existing graph.json");
-      } else {
-        console.warn("Warning: graph.json appears encrypted but no plain-text-graph.json found.");
-      }
-    }
-    // graph.json is already correct — don't re-encrypt
-    return;
-  }
+  const existing = readFileSync(graphPath, "utf-8");
+  const envelope = parseEnvelope(existing);
 
-  // plain-text-graph.json existed before this run — rebuild graph.json from it
-  const plaintext = readFileSync(plainTextPath, "utf-8");
-
-  if (password) {
-    // Read version from the plaintext graph
-    let version = 0;
-    try {
-      const parsed = JSON.parse(plaintext);
-      if (typeof parsed.version === "number") {
-        version = parsed.version;
-      }
-    } catch {
-      // ignore parse errors
-    }
-
-    const encrypted = encryptGraphJson(plaintext, password, version);
-    writeFileSync(graphPath, encrypted, "utf-8");
-    console.log("Encrypted plain-text-graph.json → graph.json");
+  if (!envelope) {
+    // Plaintext graph.json — use as plain-text-graph.json
+    writeFileSync(plainTextPath, existing, "utf-8");
+    console.log("Created plain-text-graph.json from existing graph.json");
   } else {
-    copyFileSync(plainTextPath, graphPath);
-    console.log("Copied plain-text-graph.json → graph.json");
+    console.warn("Warning: graph.json appears encrypted but no plain-text-graph.json found.");
   }
 }
 
@@ -192,7 +153,7 @@ const config = await resolveConfig();
 const repoDir = syncPagesRepo(config);
 
 if (repoDir) {
-  buildGraphJson(repoDir, config.password);
+  seedPlainTextGraph(repoDir);
 }
 
 /**

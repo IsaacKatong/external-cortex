@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createInterface } from "node:readline";
@@ -9,46 +9,6 @@ import { uploadToGitHubPages } from "./uploadToGitHubPages.js";
 import { updateGitHubPages } from "./updateGitHubPages.js";
 import { loadAllConfigs, loadUserConfig } from "../../config/loadUserConfig.js";
 import { promptConfigName } from "../../config/promptConfigName.js";
-import { encryptGraphJson } from "../../encryption/encrypt.js";
-
-/**
- * Build graph.json from plain-text-graph.json in the pages repo.
- *
- * If a password is configured, encrypts the plaintext and writes to
- * graph.json. Otherwise copies plain-text-graph.json as-is to graph.json.
- * If plain-text-graph.json doesn't exist, falls back to existing graph.json.
- */
-function buildGraphJsonInRepo(repoDir: string, password: string): void {
-  const plainTextPath = resolve(repoDir, "plain-text-graph.json");
-  const graphPath = resolve(repoDir, "graph.json");
-
-  if (!existsSync(plainTextPath)) {
-    if (existsSync(graphPath)) {
-      const existing = readFileSync(graphPath, "utf-8");
-      if (existing.trimStart().startsWith("{")) {
-        writeFileSync(plainTextPath, existing, "utf-8");
-        console.log("Created plain-text-graph.json from existing graph.json");
-      } else {
-        console.log("graph.json is already encrypted, using as-is.");
-        return;
-      }
-    } else {
-      console.log("No graph.json found, skipping encryption.");
-      return;
-    }
-  }
-
-  const plaintext = readFileSync(plainTextPath, "utf-8");
-
-  if (password) {
-    const encrypted = encryptGraphJson(plaintext, password);
-    writeFileSync(graphPath, encrypted, "utf-8");
-    console.log("Encrypted plain-text-graph.json → graph.json");
-  } else {
-    copyFileSync(plainTextPath, graphPath);
-    console.log("Copied plain-text-graph.json → graph.json");
-  }
-}
 
 /**
  * Check if graph.json has local uncommitted changes in the pages repo.
@@ -172,7 +132,7 @@ async function deploy(): Promise<void> {
     console.log("Build complete.");
 
     console.log("\nUpdating GitHub Pages repository...");
-    updateGitHubPages(fullRepoName, config.password);
+    await updateGitHubPages(fullRepoName, config.password);
     console.log(`\nDeployment complete!`);
   } else {
     const suggestedName = "external-cortex-site";

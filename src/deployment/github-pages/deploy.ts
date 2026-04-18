@@ -7,6 +7,7 @@ import { createGitHubRepo } from "./createGitHubRepo.js";
 import { buildForGitHubPages } from "./buildForGitHubPages.js";
 import { uploadToGitHubPages } from "./uploadToGitHubPages.js";
 import { updateGitHubPages } from "./updateGitHubPages.js";
+import { ensureRepoClone } from "./ensureRepoClone.js";
 import { loadAllConfigs, loadUserConfig } from "../../config/loadUserConfig.js";
 import { promptConfigName } from "../../config/promptConfigName.js";
 
@@ -108,6 +109,12 @@ async function deploy(): Promise<void> {
     const pagesDir = resolve("pages");
     const repoDir = resolve(pagesDir, repoShortName);
     console.log(`Using configured repository: "${fullRepoName}"`);
+
+    // Ensure the repo is cloned locally before building. The vite build
+    // writes sql.js WASM and other public assets into this directory, so
+    // it must exist on disk before `buildForGitHubPages` runs.
+    console.log(`\nSyncing repository to ${repoDir}...`);
+    ensureRepoClone(fullRepoName, pagesDir);
 
     // Check for local graph.json changes before proceeding
     if (existsSync(repoDir) && hasLocalGraphChanges(repoDir)) {

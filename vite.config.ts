@@ -208,9 +208,18 @@ async function syncPlainTextGraph(repoDir: string, password: string): Promise<vo
 }
 
 const config = await resolveConfig();
-const repoDir = syncPagesRepo(config);
 
-if (repoDir) {
+/**
+ * The CLI pre-syncs the GitHub Pages repo into a per-user workspace and
+ * passes it via `EC_REPO_DIR`. In that mode we skip vite.config's own
+ * clone/pull step so the CLI stays the single source of truth.
+ */
+const envRepoDir = process.env.EC_REPO_DIR;
+const skipSync = process.env.EC_SKIP_SYNC === "1";
+
+const repoDir = envRepoDir ?? (skipSync ? null : syncPagesRepo(config));
+
+if (repoDir && !envRepoDir && !skipSync) {
   await syncPlainTextGraph(repoDir, config.password);
 }
 
@@ -235,18 +244,23 @@ const publicDir = repoDir ?? "local-storage";
 const BUILD_OUTPUT = new Set(["index.html", "assets"]);
 
 function safePublicDirCopyPlugin(): Plugin {
+  let resolvedOutDir = resolve("dist");
   return {
     name: "safe-public-dir-copy",
     apply: "build",
     config() {
       return { build: { copyPublicDir: false } };
     },
+    configResolved(resolvedConfig) {
+      // Honor vite's resolved outDir (may be an absolute path passed via
+      // --outDir when the CLI invokes vite from the installed package).
+      resolvedOutDir = resolve(resolvedConfig.root, resolvedConfig.build.outDir);
+    },
     writeBundle() {
       const src = resolve(publicDir);
-      const dest = resolve("dist");
       for (const entry of readdirSync(src)) {
         if (entry === ".git" || BUILD_OUTPUT.has(entry)) continue;
-        cpSync(join(src, entry), join(dest, entry), { recursive: true });
+        cpSync(join(src, entry), join(resolvedOutDir, entry), { recursive: true });
       }
     },
   };

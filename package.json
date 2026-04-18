@@ -1,9 +1,25 @@
 {
   "name": "external-cortex",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "External Cortex functions as an extension of your brain. It ingests your stimulus and presents it in a way meant for you to understand.",
   "type": "module",
-  "main": "index.js",
+  "bin": {
+    "external-cortex": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src/**/*",
+    "!src/**/__tests__/**",
+    "!src/**/__fixtures__/**",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,26 +27,46 @@
     "test": "vitest run",
     "sync": "npx tsx src/deployment/github-pages/sync.ts",
     "deploy:github-pages": "npx tsx src/deployment/github-pages/deploy.ts",
-    "config:edit": "npx tsx src/config/editConfig.ts"
+    "config:edit": "npx tsx src/config/editConfig.ts",
+    "cli": "node bin/cli.js",
+    "prepublishOnly": "npm run test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "knowledge-graph",
+    "second-brain",
+    "note-taking",
+    "github-pages",
+    "cli"
+  ],
+  "author": "Isaac Katongole",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IsaacKatong/external-cortex.git"
+  },
+  "homepage": "https://github.com/IsaacKatong/external-cortex#readme",
+  "bugs": {
+    "url": "https://github.com/IsaacKatong/external-cortex/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sql.js": "^1.4.11",
-    "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^24.1.0",
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.2",
     "vitest": "^1.6.1"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "sql.js": "^1.14.1"
+    "sql.js": "^1.14.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vite": "^7.3.2"
   }
 }

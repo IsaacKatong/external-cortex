@@ -26,7 +26,49 @@ After upgrading Node, always re-run `npm install` to rebuild native dependencies
 
 **Note:** Vite 7's SPA fallback intercepts `.wasm` file requests. The project includes a custom Vite plugin (`sqlJsWasmPlugin` in `vite.config.ts`) that serves `.wasm` files with the correct MIME type and auto-copies the sql.js WASM binary from `node_modules` into `local-storage/`.
 
-## Setup
+## Install as a CLI
+
+Once published to npm, you can use External Cortex without cloning the repo:
+
+```bash
+# Run once without installing
+npx external-cortex deploy
+
+# Or install globally
+npm install -g external-cortex
+external-cortex deploy
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `external-cortex deploy` | Deploy to a GitHub Pages repo (prompts for config) |
+| `external-cortex sync`   | Pull latest `graph.json` from a configured repo |
+| `external-cortex config` | Edit or create named configurations |
+| `external-cortex version`| Print the installed CLI version |
+| `external-cortex help`   | Show help |
+
+Per-user state lives at `~/.external-cortex/`:
+
+- `config.json` — named configs (one per GitHub Pages target)
+- `workspaces/<repo>/` — cached clone of each target
+
+### Prerequisites
+
+- Node.js >= 20
+- [`git`](https://git-scm.com/downloads)
+- [`gh`](https://cli.github.com/) — authenticated via `gh auth login`
+
+### Updating
+
+```bash
+npm install -g external-cortex@latest
+# or, if using npx, it always fetches the latest
+npx external-cortex@latest deploy
+```
+
+## Setup (contributors)
 
 ```bash
 npm install
